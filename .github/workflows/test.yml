@@ -1,0 +1,61 @@
+# ============================================================
+# FIRST GITHUB ACTIONS PYTHON TEST
+# ============================================================
+#
+# This workflow tells GitHub:
+#
+# 1. Create a temporary computer
+# 2. Download our repository
+# 3. Install Python
+# 4. Run hello.py
+#
+# ============================================================
+
+name: First Python Test
+
+on:
+
+  # Run automatically whenever we push new code
+  push:
+
+  # Also allow us to start the workflow manually
+  workflow_dispatch:
+
+
+jobs:
+
+  run-python:
+
+    # GitHub gives us a temporary Linux computer
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # --------------------------------------------------------
+      # STEP 1
+      # Download our repository onto the temporary computer
+      # --------------------------------------------------------
+
+      - name: Get our code
+        uses: actions/checkout@v4
+
+
+      # --------------------------------------------------------
+      # STEP 2
+      # Install/select Python
+      # --------------------------------------------------------
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+
+        with:
+          python-version: "3.12"
+
+
+      # --------------------------------------------------------
+      # STEP 3
+      # Execute our Python program
+      # --------------------------------------------------------
+
+      - name: Run Python program
+        run: python hello.py
