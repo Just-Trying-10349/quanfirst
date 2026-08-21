@@ -2,59 +2,54 @@
 # FIRST GITHUB ACTIONS PYTHON TEST
 # ============================================================
 #
-# This workflow tells GitHub:
-#
-# 1. Create a temporary computer
+# Purpose:
+# Prove that GitHub can:
+# 1. Create a temporary Linux computer
 # 2. Download our repository
 # 3. Install Python
 # 4. Run hello.py
+#
+# This is LEVEL 1 of our GitHub → Kaggle → VectorBT → AI
+# → Alpaca automation project.
 #
 # ============================================================
 
 name: First Python Test
 
 on:
-
-  # Run automatically whenever we push new code
+  # Run whenever code is pushed
   push:
 
-  # Also allow us to start the workflow manually
+  # Allow manual execution
   workflow_dispatch:
-
 
 jobs:
 
   run-python:
 
-    # GitHub gives us a temporary Linux computer
+    # Temporary GitHub Linux computer
     runs-on: ubuntu-latest
 
     steps:
 
       # --------------------------------------------------------
-      # STEP 1
-      # Download our repository onto the temporary computer
+      # STEP 1 — Download our repository
       # --------------------------------------------------------
 
       - name: Get our code
-        uses: actions/checkout@v4
-
+        uses: actions/checkout@v5
 
       # --------------------------------------------------------
-      # STEP 2
-      # Install/select Python
+      # STEP 2 — Install Python
       # --------------------------------------------------------
 
       - name: Set up Python
-        uses: actions/setup-python@v5
-
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
-
       # --------------------------------------------------------
-      # STEP 3
-      # Execute our Python program
+      # STEP 3 — Run hello.py
       # --------------------------------------------------------
 
       - name: Run Python program
