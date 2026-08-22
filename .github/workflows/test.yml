@@ -1,33 +1,23 @@
 # ============================================================
-# FIRST GITHUB ACTIONS PYTHON TEST
-# ============================================================
-#
-# Purpose:
-# Prove that GitHub can:
-# 1. Create a temporary Linux computer
-# 2. Download our repository
-# 3. Install Python
-# 4. Run hello.py
-#
-# This is LEVEL 1 of our GitHub → Kaggle → VectorBT → AI
-# → Alpaca automation project.
-#
+# QUANT RESEARCH AUTOMATION — LEVEL 3
 # ============================================================
 
-name: First Python Test
+name: Quant Research Test
 
 on:
-  # Run whenever code is pushed
+
+  # Automatically run whenever we push code
   push:
 
   # Allow manual execution
   workflow_dispatch:
 
+
 jobs:
 
   run-python:
 
-    # Temporary GitHub Linux computer
+    # GitHub gives us a temporary Linux computer
     runs-on: ubuntu-latest
 
     steps:
@@ -39,18 +29,41 @@ jobs:
       - name: Get our code
         uses: actions/checkout@v5
 
+
       # --------------------------------------------------------
       # STEP 2 — Install Python
       # --------------------------------------------------------
 
       - name: Set up Python
         uses: actions/setup-python@v6
+
         with:
           python-version: "3.12"
 
+
       # --------------------------------------------------------
-      # STEP 3 — Run hello.py
+      # STEP 3 — Run our experiment
       # --------------------------------------------------------
 
-      - name: Run Python program
+      - name: Run research experiment
         run: python hello.py
+
+
+      # --------------------------------------------------------
+      # STEP 4 — Preserve the result
+      # --------------------------------------------------------
+      #
+      # GitHub's computer is temporary.
+      #
+      # The artifact allows us to keep the result after
+      # the computer is destroyed.
+      #
+
+      - name: Save experiment result
+        uses: actions/upload-artifact@v4
+
+        with:
+
+          name: experiment-result
+
+          path: experiment_result.txt
