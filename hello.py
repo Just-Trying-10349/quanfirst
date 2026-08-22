@@ -3,26 +3,32 @@
 # ============================================================
 #
 # PURPOSE:
-# Prove that GitHub Actions can:
+# Demonstrate the basic structure of a quantitative experiment:
 #
-# 1. Run Python
-# 2. Perform a simple experiment
-# 3. Calculate measurable results
-# 4. Save those results to a file
+# Python
+#   ↓
+# Experiment
+#   ↓
+# Metrics
+#   ↓
+# Saved result
 #
-# EVENTUAL SYSTEM:
+# Later this will become:
 #
 # Strategy
-#     ↓
+#   ↓
+# VectorBT
+#   ↓
 # Backtest
-#     ↓
+#   ↓
 # Metrics
-#     ↓
-# Save experiment
-#     ↓
-# Compare with previous experiments
+#   ↓
+# Saved experiment
 #
 # ============================================================
+
+from datetime import datetime
+from pathlib import Path
 
 
 print("=" * 70)
@@ -31,19 +37,19 @@ print("=" * 70)
 
 
 # ------------------------------------------------------------
-# EXPERIMENT SETTINGS
+# 1. EXPERIMENT PARAMETERS
 # ------------------------------------------------------------
 
 starting_capital = 10_000
 
 strategy_return = 0.15
 
+
+# ------------------------------------------------------------
+# 2. CALCULATE RESULTS
+# ------------------------------------------------------------
+
 ending_capital = starting_capital * (1 + strategy_return)
-
-
-# ------------------------------------------------------------
-# CALCULATE SIMPLE METRICS
-# ------------------------------------------------------------
 
 profit = ending_capital - starting_capital
 
@@ -51,7 +57,7 @@ return_percent = (profit / starting_capital) * 100
 
 
 # ------------------------------------------------------------
-# DISPLAY RESULTS
+# 3. DISPLAY RESULTS
 # ------------------------------------------------------------
 
 print()
@@ -67,22 +73,49 @@ print("-" * 70)
 
 
 # ------------------------------------------------------------
-# SAVE RESULTS
+# 4. CREATE RESULT FILE
 # ------------------------------------------------------------
 
-with open("experiment_result.txt", "w") as file:
+result_file = Path("experiment_result.txt")
+
+with result_file.open("w", encoding="utf-8") as file:
 
     file.write("QUANT RESEARCH EXPERIMENT\n")
     file.write("=" * 70 + "\n")
 
+    file.write(f"Time: {datetime.now().isoformat()}\n")
     file.write(f"Starting capital: {starting_capital}\n")
     file.write(f"Ending capital: {ending_capital}\n")
     file.write(f"Profit: {profit}\n")
     file.write(f"Return percent: {return_percent}\n")
 
 
-print()
-print("RESULT SAVED:")
-print("experiment_result.txt")
+# ------------------------------------------------------------
+# 5. VERIFY THE FILE EXISTS
+# ------------------------------------------------------------
 
+print()
+print("CHECKING RESULT FILE...")
+
+if result_file.exists():
+
+    print("SUCCESS: experiment_result.txt was created.")
+
+    print()
+    print("FILE CONTENTS")
+    print("-" * 70)
+
+    print(result_file.read_text(encoding="utf-8"))
+
+else:
+
+    print("ERROR: experiment_result.txt was NOT created.")
+
+    raise FileNotFoundError(
+        "experiment_result.txt was expected but does not exist."
+    )
+
+
+print("=" * 70)
+print("EXPERIMENT COMPLETED SUCCESSFULLY")
 print("=" * 70)
