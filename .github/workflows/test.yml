@@ -5,25 +5,19 @@
 name: Quant Research Test
 
 on:
-
-  # Automatically run whenever we push code
   push:
-
-  # Allow manual execution
   workflow_dispatch:
-
 
 jobs:
 
   run-python:
 
-    # GitHub gives us a temporary Linux computer
     runs-on: ubuntu-latest
 
     steps:
 
       # --------------------------------------------------------
-      # STEP 1 — Download our repository
+      # STEP 1 — Download repository
       # --------------------------------------------------------
 
       - name: Get our code
@@ -36,13 +30,12 @@ jobs:
 
       - name: Set up Python
         uses: actions/setup-python@v6
-
         with:
           python-version: "3.12"
 
 
       # --------------------------------------------------------
-      # STEP 3 — Run our experiment
+      # STEP 3 — Run experiment
       # --------------------------------------------------------
 
       - name: Run research experiment
@@ -50,20 +43,30 @@ jobs:
 
 
       # --------------------------------------------------------
-      # STEP 4 — Preserve the result
+      # STEP 4 — Check that result file exists
       # --------------------------------------------------------
-      #
-      # GitHub's computer is temporary.
-      #
-      # The artifact allows us to keep the result after
-      # the computer is destroyed.
-      #
+
+      - name: Verify result file
+        run: |
+          echo "Checking for experiment_result.txt..."
+
+          if [ -f experiment_result.txt ]; then
+            echo "SUCCESS: experiment_result.txt exists."
+            echo ""
+            echo "File contents:"
+            cat experiment_result.txt
+          else
+            echo "ERROR: experiment_result.txt does not exist."
+            exit 1
+          fi
+
+
+      # --------------------------------------------------------
+      # STEP 5 — Upload result
+      # --------------------------------------------------------
 
       - name: Save experiment result
         uses: actions/upload-artifact@v4
-
         with:
-
           name: experiment-result
-
           path: experiment_result.txt
