@@ -62,11 +62,19 @@ jobs:
 
 
       # --------------------------------------------------------
-      # STEP 5 — Upload result
+      # STEP 5 — Save result AND code
       # --------------------------------------------------------
 
-      - name: Save experiment result
+      - name: Save experiment result and source code
         uses: actions/upload-artifact@v4
+
+        with:
+
+          name: experiment-result-and-code
+
+          path: |
+            experiment_result.txt
+            hello.py
         with:
           name: experiment-result
           path: experiment_result.txt
