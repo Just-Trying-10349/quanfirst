@@ -1,41 +1,26 @@
 # ============================================================
-# QUANT RESEARCH AUTOMATION — LEVEL 4
+# QUANT RESEARCH AUTOMATION — LEVEL 5
 # ============================================================
 #
-# PURPOSE:
+# NEW FEATURE:
 #
-# We are introducing PARAMETERS.
+# Every experiment receives a unique ID.
 #
-# Instead of putting experiment settings directly inside
-# our Python code, we store them separately in:
-#
-#     parameters.json
-#
-#
-# The architecture is now:
+# Architecture:
 #
 # parameters.json
-#       ↓
+#        |
+#        v
 # hello.py
-#       ↓
-# experiment
-#       ↓
-# results
+#        |
+#        v
+# EXPERIMENT ID
+#        |
+#        v
+# results folder
 #
 #
-# Eventually:
-#
-# AI / optimizer
-#       ↓
-# parameters.json
-#       ↓
-# VectorBT
-#       ↓
-# backtest
-#       ↓
-# metrics
-#       ↓
-# compare experiments
+# This prevents experiment history from being lost.
 #
 # ============================================================
 
@@ -46,191 +31,223 @@ from pathlib import Path
 
 
 print("=" * 70)
-print("QUANT RESEARCH EXPERIMENT — LEVEL 4")
+print("QUANT RESEARCH EXPERIMENT — LEVEL 5")
 print("=" * 70)
 
 
 # ------------------------------------------------------------
-# STEP 1 — FIND PARAMETERS FILE
+# STEP 1
+# LOAD PARAMETERS
 # ------------------------------------------------------------
+
 
 parameters_file = Path("parameters.json")
 
-
-if not parameters_file.exists():
-
-    raise FileNotFoundError(
-        "parameters.json was not found."
-    )
-
-
-print()
-print("Parameters file found:")
-print(parameters_file)
-
-
-# ------------------------------------------------------------
-# STEP 2 — LOAD PARAMETERS
-# ------------------------------------------------------------
 
 with parameters_file.open("r", encoding="utf-8") as file:
 
     parameters = json.load(file)
 
 
+
+# ------------------------------------------------------------
+# STEP 2
+# CREATE EXPERIMENT ID
+# ------------------------------------------------------------
+
+
+experiment_folder = Path("experiments")
+
+
+experiment_folder.mkdir(exist_ok=True)
+
+
+# Count existing experiments
+
+existing = list(experiment_folder.glob("EXP-*"))
+
+
+experiment_number = len(existing) + 1
+
+
+experiment_id = (
+    f"EXP-{experiment_number:04d}"
+)
+
+
 print()
-print("PARAMETERS")
-print("-" * 70)
 
-for name, value in parameters.items():
+print("Experiment ID:")
+print(experiment_id)
 
-    print(f"{name}: {value}")
 
 
 # ------------------------------------------------------------
-# STEP 3 — READ EXPERIMENT SETTINGS
+# STEP 3
+# CREATE EXPERIMENT DIRECTORY
 # ------------------------------------------------------------
 
-strategy_name = parameters["strategy_name"]
 
-starting_capital = parameters["starting_capital"]
+current_experiment = (
+    experiment_folder /
+    experiment_id
+)
+
+
+current_experiment.mkdir()
+
+
+print()
+
+print("Experiment folder created:")
+
+print(current_experiment)
+
+
+
+# ------------------------------------------------------------
+# STEP 4
+# RUN SIMPLE EXPERIMENT
+# ------------------------------------------------------------
+
+
+capital = parameters["starting_capital"]
 
 strategy_return = parameters["strategy_return"]
 
 
-# ------------------------------------------------------------
-# STEP 4 — RUN EXPERIMENT
-# ------------------------------------------------------------
-
 ending_capital = (
-    starting_capital *
+    capital *
     (1 + strategy_return)
 )
 
+
 profit = (
     ending_capital -
-    starting_capital
+    capital
 )
+
 
 return_percent = (
     profit /
-    starting_capital
+    capital
 ) * 100
 
 
-# ------------------------------------------------------------
-# STEP 5 — DISPLAY RESULTS
-# ------------------------------------------------------------
-
-print()
-print("EXPERIMENT RESULTS")
-print("-" * 70)
-
-print(f"Strategy         : {strategy_name}")
-print(f"Starting capital : ${starting_capital:,.2f}")
-print(f"Ending capital   : ${ending_capital:,.2f}")
-print(f"Profit           : ${profit:,.2f}")
-print(f"Return           : {return_percent:.2f}%")
-
-print("-" * 70)
-
 
 # ------------------------------------------------------------
-# STEP 6 — SAVE RESULTS
+# STEP 5
+# SAVE RESULT
 # ------------------------------------------------------------
 
-result_file = Path("experiment_result.txt")
+
+result_file = (
+    current_experiment /
+    "experiment_result.txt"
+)
 
 
-with result_file.open("w", encoding="utf-8") as file:
+with result_file.open(
+    "w",
+    encoding="utf-8"
+) as file:
 
-    file.write("QUANT RESEARCH EXPERIMENT\n")
-
-    file.write("=" * 70 + "\n")
 
     file.write(
-        f"Experiment time: "
-        f"{datetime.now().isoformat()}\n"
+        "QUANT RESEARCH EXPERIMENT\n"
     )
 
-    file.write("\n")
+    file.write(
+        "=" * 70 +
+        "\n"
+    )
 
-    file.write("PARAMETERS\n")
 
-    file.write("-" * 70 + "\n")
+    file.write(
+        f"Experiment ID: {experiment_id}\n"
+    )
 
-    for name, value in parameters.items():
+
+    file.write(
+        f"Time: {datetime.now()}\n\n"
+    )
+
+
+    file.write(
+        "PARAMETERS\n"
+    )
+
+
+    for key,value in parameters.items():
 
         file.write(
-            f"{name}: {value}\n"
+            f"{key}: {value}\n"
         )
 
-    file.write("\n")
 
-    file.write("RESULTS\n")
+    file.write("\nRESULTS\n")
 
-    file.write("-" * 70 + "\n")
 
     file.write(
-        f"Starting capital: "
-        f"{starting_capital}\n"
+        f"Starting capital: {capital}\n"
     )
 
-    file.write(
-        f"Ending capital: "
-        f"{ending_capital}\n"
-    )
 
     file.write(
-        f"Profit: "
-        f"{profit}\n"
+        f"Ending capital: {ending_capital}\n"
     )
 
+
     file.write(
-        f"Return percent: "
-        f"{return_percent}\n"
+        f"Profit: {profit}\n"
     )
+
+
+    file.write(
+        f"Return: {return_percent}%\n"
+    )
+
 
 
 # ------------------------------------------------------------
-# STEP 7 — VERIFY RESULT
+# STEP 6
+# COPY IMPORTANT FILES
 # ------------------------------------------------------------
+
+
+import shutil
+
+
+shutil.copy(
+    "parameters.json",
+    current_experiment /
+    "parameters.json"
+)
+
+
+shutil.copy(
+    "hello.py",
+    current_experiment /
+    "hello.py"
+)
+
+
+
+# ------------------------------------------------------------
+# FINISH
+# ------------------------------------------------------------
+
 
 print()
-print("CHECKING RESULT FILE...")
 
-
-if result_file.exists():
-
-    print(
-        "SUCCESS: experiment_result.txt was created."
-    )
-
-else:
-
-    raise FileNotFoundError(
-        "experiment_result.txt was not created."
-    )
-
-
-# ------------------------------------------------------------
-# FINAL MESSAGE
-# ------------------------------------------------------------
-
-print()
 print("=" * 70)
 
-print("LEVEL 4 EXPERIMENT COMPLETED SUCCESSFULLY")
+print("EXPERIMENT COMPLETE")
 
 print("=" * 70)
 
 print()
-print("We have now separated:")
-print()
-print("PARAMETERS")
-print("    ↓")
-print("CODE")
-print("    ↓")
-print("RESULT")
-print()
-print("This is the foundation of automated parameter search.")
+
+print("Saved:")
+
+print(current_experiment)
