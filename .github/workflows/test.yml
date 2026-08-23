@@ -1,21 +1,31 @@
 # ============================================================
-# QUANT RESEARCH AUTOMATION — LEVEL 5 (FIXED)
+# QUANT RESEARCH AUTOMATION — LEVEL 5 (FIXED v2)
 # Experiment Memory System
 # ============================================================
 #
-# FIX SUMMARY:
-# 1. Added a `concurrency` group so overlapping runs (e.g. two pushes
-#    close together, or a manual run while another is in progress)
-#    are queued instead of racing each other for the leaderboard file.
-# 2. The commit step now `git pull --rebase`s right before pushing,
-#    and retries a few times if the push is rejected because the
-#    remote moved — instead of failing and silently dropping the row.
+# FIX SUMMARY (v2):
+# Your run history showed every push firing the workflow AND you
+# manually clicking "Run workflow" a couple minutes later — both with
+# the same parameters.json, producing two experiments with identical
+# results. That's not a bug, it's two real triggers doing what they
+# were told.
+#
+# Fix: hello.py now skips creating a new experiment if parameters.json
+# is unchanged since the last recorded row. This workflow exposes a
+# "force_rerun" checkbox so you can still deliberately force a rerun
+# on unchanged parameters when you actually want to (e.g. testing).
 # ============================================================
 name: Quant Research Test
 
 on:
   push:
   workflow_dispatch:
+    inputs:
+      force_rerun:
+        description: "Run even if parameters.json hasn't changed"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -48,9 +58,12 @@ jobs:
 
       # ------------------------------------------------------
       # STEP 3
-      # RUN EXPERIMENT
+      # RUN EXPERIMENT (skips automatically if params unchanged,
+      # unless force_rerun was checked on a manual run)
       # ------------------------------------------------------
       - name: Step 3 - Run research experiment
+        env:
+          FORCE_RERUN: ${{ github.event.inputs.force_rerun || 'false' }}
         run: |
           python hello.py
 
@@ -63,7 +76,7 @@ jobs:
           echo "======================================"
           echo "CHECKING EXPERIMENT OUTPUT"
           echo "======================================"
-          ls -R experiments
+          ls -R experiments || echo "(no new experiment this run)"
 
       # ------------------------------------------------------
       # STEP 5
@@ -105,8 +118,8 @@ jobs:
         run: |
           echo ""
           echo "======================================"
-          echo "EXPERIMENT SUCCESSFULLY SAVED"
+          echo "EXPERIMENT WORKFLOW COMPLETE"
           echo "======================================"
           echo ""
           echo "Saved contents:"
-          ls -R experiments
+          ls -R experiments || echo "(no new experiment this run)"
