@@ -1,1 +1,2 @@
 experiment_id,return_percent,profit,status,parameters_hash,commit_sha,timestamp_eat
+EXP-0007,17.0,1700.0,completed,b4713bfbfbcfc66319e25ca53ead89076ca4d56534def8ddea339d44c260796c,f7f29ea4e41cfaf4c7f013c178e8a3275276eb30,2026-08-24T00:14:47+0300
