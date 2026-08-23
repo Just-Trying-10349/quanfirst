@@ -1,125 +1,71 @@
 # ============================================================
-# QUANT RESEARCH AUTOMATION — LEVEL 5 (FIXED v2)
+# QUANT RESEARCH AUTOMATION — LEVEL 5
 # Experiment Memory System
-# ============================================================
-#
-# FIX SUMMARY (v2):
-# Your run history showed every push firing the workflow AND you
-# manually clicking "Run workflow" a couple minutes later — both with
-# the same parameters.json, producing two experiments with identical
-# results. That's not a bug, it's two real triggers doing what they
-# were told.
-#
-# Fix: hello.py now skips creating a new experiment if parameters.json
-# is unchanged since the last recorded row. This workflow exposes a
-# "force_rerun" checkbox so you can still deliberately force a rerun
-# on unchanged parameters when you actually want to (e.g. testing).
 # ============================================================
 name: Quant Research Test
 
 on:
   push:
   workflow_dispatch:
-    inputs:
-      force_rerun:
-        description: "Run even if parameters.json hasn't changed"
-        required: false
-        type: boolean
-        default: false
+
+# Fixes duplicate IDs by ensuring workflows run sequentially, never concurrently
+concurrency:
+  group: leaderboard-updates
+  cancel-in-progress: false
 
 permissions:
   contents: write
-
-# Ensures only ONE run of this workflow touches the repo/leaderboard
-# at a time. Extra triggers wait in line rather than racing.
-concurrency:
-  group: quant-research-experiments
-  cancel-in-progress: false
 
 jobs:
   run-python:
     runs-on: ubuntu-latest
     steps:
-      # ------------------------------------------------------
-      # STEP 1
-      # DOWNLOAD CODE
-      # ------------------------------------------------------
       - name: Step 1 - Get repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
-      # ------------------------------------------------------
-      # STEP 2
-      # INSTALL PYTHON
-      # ------------------------------------------------------
       - name: Step 2 - Setup Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      # ------------------------------------------------------
-      # STEP 3
-      # RUN EXPERIMENT (skips automatically if params unchanged,
-      # unless force_rerun was checked on a manual run)
-      # ------------------------------------------------------
       - name: Step 3 - Run research experiment
-        env:
-          FORCE_RERUN: ${{ github.event.inputs.force_rerun || 'false' }}
         run: |
           python hello.py
 
-      # ------------------------------------------------------
-      # STEP 4
-      # SHOW CREATED EXPERIMENT
-      # ------------------------------------------------------
       - name: Step 4 - Check experiment folder
         run: |
           echo "======================================"
           echo "CHECKING EXPERIMENT OUTPUT"
           echo "======================================"
-          ls -R experiments || echo "(no new experiment this run)"
+          ls -R experiments
 
-      # ------------------------------------------------------
-      # STEP 5
-      # SAVE COMPLETE EXPERIMENT
-      # ------------------------------------------------------
       - name: Step 5 - Save experiment archive
         uses: actions/upload-artifact@v4
         with:
-          name: experiment-history-${{ github.run_id }}
+          name: experiment-history
           path: |
             experiments/
             leaderboard.csv
 
-      # ------------------------------------------------------
-      # STEP 6
-      # SAVE LEADERBOARD BACK TO GITHUB (race-safe)
-      # ------------------------------------------------------
       - name: Step 6 - Commit experiment memory
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
+          git config --global pull.rebase true
+          
+          # Pull latest changes right before commit to avoid push rejections
+          git pull origin main || true
+          
+          git add leaderboard.csv experiments/
+          git commit -m "Update experiment leaderboard" || echo "No changes to commit"
+          git push
 
-          git add leaderboard.csv
-          git commit -m "Update experiment leaderboard (${{ github.run_id }})" || echo "No changes to commit"
-
-          # Retry the push a few times: pull --rebase first in case another
-          # run landed a commit in between, then try to push again.
-          for attempt in 1 2 3 4 5; do
-            git pull --rebase origin "${GITHUB_REF_NAME}" && git push && break
-            echo "Push attempt $attempt failed, retrying..."
-            sleep $((RANDOM % 5 + 1))
-          done
-
-      # ------------------------------------------------------
-      # STEP 7
-      # SUCCESS MESSAGE
-      # ------------------------------------------------------
       - name: Step 7 - Complete
         run: |
           echo ""
           echo "======================================"
-          echo "EXPERIMENT WORKFLOW COMPLETE"
+          echo "EXPERIMENT SUCCESSFULLY SAVED"
           echo "======================================"
           echo ""
           echo "Saved contents:"
-          ls -R experiments || echo "(no new experiment this run)"
+          ls -R experiments
