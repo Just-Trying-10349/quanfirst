@@ -263,45 +263,29 @@ jobs:
 
       # ------------------------------------------------------
       # STEP 6
-      # SAVE RESULT + SOURCE CODE
+      # SAVE COMPLETE EXPERIMENT
       # ------------------------------------------------------
       #
-      # The GitHub Actions computer is temporary.
+      # We now preserve:
       #
-      # When the job finishes, that computer disappears.
-      #
-      # upload-artifact allows us to preserve selected files.
-      #
-      # Our downloadable artifact will contain:
-      #
-      # experiment_result.txt
-      # hello.py
-      #
-      # This means we can later determine:
-      #
-      # WHAT HAPPENED?
-      #
-      # and
-      #
-      # WHAT CODE PRODUCED IT?
+      # 1. The result
+      # 2. The Python code
+      # 3. The parameters
       #
       # ------------------------------------------------------
-
-      - name: Step 6 - Save experiment result and source code
-
+  
+      - name: Step 6 - Save complete experiment
+  
         uses: actions/upload-artifact@v4
-
+  
         with:
-
-          # Name displayed under the workflow's Artifacts
-          name: experiment-result-and-code
-
-          # Files to preserve
+  
+          name: experiment-result-code-and-parameters
+  
           path: |
-
             experiment_result.txt
-
             hello.py
+            parameters.json
 
 
       # ------------------------------------------------------
