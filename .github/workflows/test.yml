@@ -1,53 +1,38 @@
 # ============================================================
-# QUANT RESEARCH AUTOMATION — LEVEL 5
+# QUANT RESEARCH AUTOMATION — LEVEL 7
 # ============================================================
 #
-# PURPOSE:
+# GitHub
+#    ↓
+# GitHub Actions
+#    ↓
+# Python experiment
+#    ↓
+# Experiment ID
+#    ↓
+# Result
+#    ↓
+# Leaderboard
+#    ↓
+# Best experiment
 #
-# GitHub Actions automatically:
+# AI IS NOT CONNECTED YET.
 #
-#   1. Downloads the repository
-#   2. Installs Python
-#   3. Runs hello.py
-#   4. Prevents duplicate parameter experiments
-#   5. Creates sequential experiment IDs
-#   6. Saves experiment files
-#   7. Updates leaderboard.csv
-#   8. Preserves the experiment history
+# Later:
 #
-#
-# EXPERIMENT IDs:
-#
-#   EXP-0001
-#   EXP-0002
-#   EXP-0003
-#   EXP-0004
-#
-#
-# TECHNICAL TRACEABILITY:
-#
-# Each experiment also records:
-#
-#   commit SHA
-#   timestamp
-#   parameter hash
-#
-#
-# FUTURE:
-#
-#   Parameters
-#        ↓
-#   VectorBT
-#        ↓
-#   Backtest
-#        ↓
-#   Metrics
-#        ↓
-#   Parameter search
-#        ↓
-#   Best experiments
-#        ↓
-#   AI analysis
+# GitHub Actions
+#       ↓
+# Python / VectorBT
+#       ↓
+# Many experiments
+#       ↓
+# leaderboard.csv
+#       ↓
+# External AI API
+#       ↓
+# AI analysis
+#       ↓
+# Improved parameters
 #
 # ============================================================
 
@@ -56,23 +41,22 @@ name: Quant Research Test
 
 
 # ============================================================
-# WHEN SHOULD THE WORKFLOW RUN?
+# WORKFLOW TRIGGERS
 # ============================================================
 
 on:
 
-  # Run whenever repository code is pushed.
+  # Run when repository changes
   push:
 
-  # Also allow manual execution.
+  # Allow manual execution
   workflow_dispatch:
 
     inputs:
 
       force_rerun:
 
-        description:
-          "Run even if parameters.json has not changed"
+        description: "Run even if parameters.json has not changed"
 
         required: false
 
@@ -84,11 +68,6 @@ on:
 # ============================================================
 # PERMISSIONS
 # ============================================================
-#
-# The workflow needs permission to write the updated
-# leaderboard and experiment history back to GitHub.
-#
-# ============================================================
 
 permissions:
 
@@ -99,8 +78,10 @@ permissions:
 # CONCURRENCY
 # ============================================================
 #
-# Prevent two experiments from modifying the repository
-# simultaneously.
+# Only one experiment workflow can modify the repository
+# at a time.
+#
+# This protects leaderboard.csv from simultaneous writes.
 #
 # ============================================================
 
@@ -112,7 +93,7 @@ concurrency:
 
 
 # ============================================================
-# JOB
+# JOBS
 # ============================================================
 
 jobs:
@@ -125,20 +106,20 @@ jobs:
     steps:
 
 
-      # ------------------------------------------------------
+      # ======================================================
       # STEP 1
       # GET REPOSITORY
-      # ------------------------------------------------------
+      # ======================================================
 
       - name: Step 1 - Get repository
 
         uses: actions/checkout@v5
 
 
-      # ------------------------------------------------------
+      # ======================================================
       # STEP 2
-      # SET UP PYTHON
-      # ------------------------------------------------------
+      # INSTALL PYTHON
+      # ======================================================
 
       - name: Step 2 - Setup Python
 
@@ -149,83 +130,106 @@ jobs:
           python-version: "3.12"
 
 
-      # ------------------------------------------------------
+      # ======================================================
       # STEP 3
       # RUN EXPERIMENT
-      # ------------------------------------------------------
-      #
-      # FORCE_RERUN is normally false.
-      #
-      # Therefore unchanged parameters are skipped.
-      #
-      # A deliberate manual rerun can set it to true.
-      #
-      # ------------------------------------------------------
+      # ======================================================
 
       - name: Step 3 - Run research experiment
 
         env:
 
-          FORCE_RERUN:
-            ${{ github.event.inputs.force_rerun || 'false' }}
+          FORCE_RERUN: ${{ github.event.inputs.force_rerun || 'false' }}
 
         run: |
 
           python hello.py
 
 
-      # ------------------------------------------------------
+      # ======================================================
       # STEP 4
-      # DISPLAY EXPERIMENT HISTORY
-      # ------------------------------------------------------
+      # SHOW EXPERIMENT OUTPUT
+      # ======================================================
 
       - name: Step 4 - Check experiment output
 
         run: |
 
-          echo "=============================================="
-
+          echo ""
+          echo "======================================================"
           echo "EXPERIMENT OUTPUT"
-
-          echo "=============================================="
+          echo "======================================================"
 
           echo ""
 
           echo "Experiment directories:"
 
-          ls -la experiments || true
+          ls -R experiments || echo "(no new experiment created)"
 
           echo ""
 
-          echo "Full experiment tree:"
+          echo "======================================================"
+          echo "LEADERBOARD"
+          echo "======================================================"
 
-          find experiments -maxdepth 2 -type f -print || true
+          if [ -f leaderboard.csv ]; then
 
-          echo ""
+            cat leaderboard.csv
 
-          echo "Leaderboard:"
+          else
 
-          cat leaderboard.csv || true
+            echo "leaderboard.csv does not exist."
+
+            exit 1
+
+          fi
 
 
-      # ------------------------------------------------------
+      # ======================================================
       # STEP 5
-      # SAVE EXPERIMENT ARTIFACT
-      # ------------------------------------------------------
-      #
-      # This gives us a downloadable copy of the research
-      # history from the GitHub Actions run.
-      #
-      # ------------------------------------------------------
+      # SHOW CURRENT CHAMPION
+      # ======================================================
 
-      - name: Step 5 - Save experiment archive
+      - name: Step 5 - Show research champion
+
+        run: |
+
+          echo ""
+          echo "======================================================"
+          echo "CURRENT BEST EXPERIMENT"
+          echo "======================================================"
+
+          echo ""
+
+          if [ -f best_experiment.json ]; then
+
+            cat best_experiment.json
+
+          else
+
+            echo "best_experiment.json was not created."
+
+            exit 1
+
+          fi
+
+          echo ""
+
+          echo "======================================================"
+
+
+      # ======================================================
+      # STEP 6
+      # SAVE COMPLETE EXPERIMENT ARCHIVE
+      # ======================================================
+
+      - name: Step 6 - Save experiment archive
 
         uses: actions/upload-artifact@v4
 
         with:
 
-          name:
-            experiment-history-${{ github.run_id }}
+          name: experiment-history-${{ github.run_id }}
 
           path: |
 
@@ -233,30 +237,15 @@ jobs:
 
             leaderboard.csv
 
+            best_experiment.json
 
-      # ------------------------------------------------------
-      # STEP 6
-      # COMMIT EXPERIMENT MEMORY BACK TO GITHUB
-      # ------------------------------------------------------
-      #
-      # IMPORTANT:
-      #
-      # We now save BOTH:
-      #
-      #   leaderboard.csv
-      #
-      # AND
-      #
-      #   experiments/
-      #
-      # to the repository.
-      #
-      # This means the experiment history survives the temporary
-      # GitHub Actions computer.
-      #
-      # ------------------------------------------------------
 
-      - name: Step 6 - Commit experiment memory
+      # ======================================================
+      # STEP 7
+      # SAVE RESEARCH MEMORY BACK TO GITHUB
+      # ======================================================
+
+      - name: Step 7 - Commit experiment memory
 
         run: |
 
@@ -265,26 +254,13 @@ jobs:
           git config --global user.email "github-actions@github.com"
 
 
-          # Add the leaderboard.
+          git add leaderboard.csv best_experiment.json
 
-          git add leaderboard.csv
-
-
-          # Add the experiment directories.
-
-          git add experiments/
-
-
-          # Commit if there are changes.
 
           git commit \
-            -m "Update experiment history (${{ github.run_id }})" \
+            -m "Update experiment research memory (${{ github.run_id }})" \
             || echo "No changes to commit"
 
-
-          # --------------------------------------------------
-          # Push safely.
-          # --------------------------------------------------
 
           for attempt in 1 2 3 4 5; do
 
@@ -292,48 +268,80 @@ jobs:
               && git push \
               && break
 
-            echo "Push attempt $attempt failed."
-
-            echo "Retrying..."
+            echo "Push attempt $attempt failed, retrying..."
 
             sleep $((RANDOM % 5 + 1))
 
           done
 
 
-      # ------------------------------------------------------
-      # STEP 7
-      # FINAL CONFIRMATION
-      # ------------------------------------------------------
+      # ======================================================
+      # STEP 8
+      # FINAL SUCCESS MESSAGE
+      # ======================================================
 
-      - name: Step 7 - Complete
+      - name: Step 8 - Complete
 
         run: |
 
           echo ""
 
-          echo "=============================================="
+          echo "======================================================"
 
-          echo "QUANT RESEARCH WORKFLOW COMPLETE"
+          echo "QUANT RESEARCH LEVEL 7 COMPLETE"
 
-          echo "=============================================="
-
-          echo ""
-
-          echo "Experiment history:"
-
-          find experiments -maxdepth 2 -type f -print || true
+          echo "======================================================"
 
           echo ""
 
-          echo "Leaderboard:"
-
-          cat leaderboard.csv
+          echo "The system now maintains:"
 
           echo ""
 
-          echo "=============================================="
+          echo "1. Individual experiment IDs"
 
-          echo "END"
+          echo "2. Individual experiment folders"
 
-          echo "=============================================="
+          echo "3. Exact parameters"
+
+          echo "4. Exact Python code"
+
+          echo "5. Experiment results"
+
+          echo "6. Experiment leaderboard"
+
+          echo "7. Current best experiment"
+
+          echo ""
+
+          echo "AI is intentionally NOT connected yet."
+
+          echo ""
+
+          echo "Future architecture:"
+
+          echo "Python / VectorBT"
+
+          echo "       ↓"
+
+          echo "Many experiments"
+
+          echo "       ↓"
+
+          echo "Leaderboard"
+
+          echo "       ↓"
+
+          echo "External AI API"
+
+          echo "       ↓"
+
+          echo "Research analysis"
+
+          echo "       ↓"
+
+          echo "Improved experiments"
+
+          echo ""
+
+          echo "======================================================"
