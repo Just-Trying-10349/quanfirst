@@ -1,1 +1,2 @@
-experiment_id,return_percent,profit,status
+experiment_id,return_percent,profit,status,parameters_hash
+EXP-32624901661-1,9.0,900.0,completed,522bedf9e4e02914c2e0d9df388c530825e1ed4a8d72a24746df81098c3581b2
