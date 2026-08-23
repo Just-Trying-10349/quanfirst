@@ -280,46 +280,72 @@ import csv
 leaderboard_file = Path("leaderboard.csv")
 
 
-file_exists = leaderboard_file.exists()
+rows = []
 
+
+# Read existing leaderboard
+
+if leaderboard_file.exists():
+
+    with leaderboard_file.open(
+        "r",
+        newline="",
+        encoding="utf-8"
+    ) as file:
+
+        reader = csv.DictReader(file)
+
+        for row in reader:
+
+            if row.get("experiment_id"):
+
+                rows.append(row)
+
+
+
+# Add new experiment
+
+rows.append(
+    {
+        "experiment_id": experiment_id,
+        "return_percent": round(return_percent,2),
+        "profit": round(profit,2),
+        "status": "completed"
+    }
+)
+
+
+
+# Rewrite clean CSV
 
 with leaderboard_file.open(
-    "a",
+    "w",
     newline="",
     encoding="utf-8"
 ) as file:
 
 
-    writer = csv.writer(file)
-
-
-    if not file_exists:
-
-        writer.writerow(
-            [
-                "experiment_id",
-                "return_percent",
-                "profit",
-                "status"
-            ]
-        )
-
-
-    writer.writerow(
-        [
-            experiment_id,
-            round(return_percent,2),
-            round(profit,2),
-            "completed"
+    writer = csv.DictWriter(
+        file,
+        fieldnames=[
+            "experiment_id",
+            "return_percent",
+            "profit",
+            "status"
         ]
     )
+
+
+    writer.writeheader()
+
+    writer.writerows(rows)
+
 
 
 print()
 
 print("Leaderboard updated:")
 print(leaderboard_file)
-
 # ------------------------------------------------------------
 # FINISH
 # ------------------------------------------------------------
