@@ -283,7 +283,7 @@ jobs:
           name: experiment-result-code-and-parameters
   
           path: |
-            experiments
+            experiments/
 
 
       # ------------------------------------------------------
