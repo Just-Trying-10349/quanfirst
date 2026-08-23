@@ -1,147 +1,112 @@
 # ============================================================
-# QUANT RESEARCH AUTOMATION — LEVEL 5
+# QUANT RESEARCH AUTOMATION — LEVEL 5 (FIXED)
 # Experiment Memory System
 # ============================================================
-
+#
+# FIX SUMMARY:
+# 1. Added a `concurrency` group so overlapping runs (e.g. two pushes
+#    close together, or a manual run while another is in progress)
+#    are queued instead of racing each other for the leaderboard file.
+# 2. The commit step now `git pull --rebase`s right before pushing,
+#    and retries a few times if the push is rejected because the
+#    remote moved — instead of failing and silently dropping the row.
+# ============================================================
 name: Quant Research Test
 
-
 on:
-
   push:
-
   workflow_dispatch:
 
 permissions:
-
   contents: write
 
+# Ensures only ONE run of this workflow touches the repo/leaderboard
+# at a time. Extra triggers wait in line rather than racing.
+concurrency:
+  group: quant-research-experiments
+  cancel-in-progress: false
+
 jobs:
-
   run-python:
-
-
     runs-on: ubuntu-latest
-
-
     steps:
-
-
       # ------------------------------------------------------
       # STEP 1
       # DOWNLOAD CODE
       # ------------------------------------------------------
-
       - name: Step 1 - Get repository
-
         uses: actions/checkout@v5
-
-
 
       # ------------------------------------------------------
       # STEP 2
       # INSTALL PYTHON
       # ------------------------------------------------------
-
       - name: Step 2 - Setup Python
-
         uses: actions/setup-python@v6
-
         with:
-
           python-version: "3.12"
-
-
 
       # ------------------------------------------------------
       # STEP 3
       # RUN EXPERIMENT
       # ------------------------------------------------------
-
       - name: Step 3 - Run research experiment
-
         run: |
-
           python hello.py
-
-
 
       # ------------------------------------------------------
       # STEP 4
       # SHOW CREATED EXPERIMENT
       # ------------------------------------------------------
-
       - name: Step 4 - Check experiment folder
-
         run: |
-
           echo "======================================"
           echo "CHECKING EXPERIMENT OUTPUT"
           echo "======================================"
-
-
           ls -R experiments
-
-
 
       # ------------------------------------------------------
       # STEP 5
       # SAVE COMPLETE EXPERIMENT
       # ------------------------------------------------------
-
       - name: Step 5 - Save experiment archive
-
         uses: actions/upload-artifact@v4
-
         with:
-
-          name: experiment-history
-
+          name: experiment-history-${{ github.run_id }}
           path: |
-
             experiments/
-            
             leaderboard.csv
-
 
       # ------------------------------------------------------
       # STEP 6
-      # SAVE LEADERBOARD BACK TO GITHUB
+      # SAVE LEADERBOARD BACK TO GITHUB (race-safe)
       # ------------------------------------------------------
-
       - name: Step 6 - Commit experiment memory
-
         run: |
-
           git config --global user.name "github-actions"
-
           git config --global user.email "github-actions@github.com"
 
-
           git add leaderboard.csv
+          git commit -m "Update experiment leaderboard (${{ github.run_id }})" || echo "No changes to commit"
 
-
-          git commit -m "Update experiment leaderboard" || echo "No changes to commit"
-
-
-          git push
+          # Retry the push a few times: pull --rebase first in case another
+          # run landed a commit in between, then try to push again.
+          for attempt in 1 2 3 4 5; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push && break
+            echo "Push attempt $attempt failed, retrying..."
+            sleep $((RANDOM % 5 + 1))
+          done
 
       # ------------------------------------------------------
       # STEP 7
       # SUCCESS MESSAGE
       # ------------------------------------------------------
-
       - name: Step 7 - Complete
-
         run: |
-
           echo ""
           echo "======================================"
           echo "EXPERIMENT SUCCESSFULLY SAVED"
           echo "======================================"
-
           echo ""
-
           echo "Saved contents:"
-
           ls -R experiments
