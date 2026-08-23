@@ -283,9 +283,7 @@ jobs:
           name: experiment-result-code-and-parameters
   
           path: |
-            experiment_result.txt
-            hello.py
-            parameters.json
+            experiments
 
 
       # ------------------------------------------------------
