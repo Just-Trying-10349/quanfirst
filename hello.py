@@ -64,10 +64,48 @@ experiment_folder.mkdir(exist_ok=True)
 
 # Count existing experiments
 
-existing = list(experiment_folder.glob("EXP-*"))
+# ------------------------------------------------------------
+# CREATE UNIQUE EXPERIMENT ID
+# BASED ON LEADERBOARD HISTORY
+# ------------------------------------------------------------
 
 
-experiment_number = len(existing) + 1
+leaderboard_file = Path("leaderboard.csv")
+
+
+highest_id = 0
+
+
+if leaderboard_file.exists():
+
+    with leaderboard_file.open(
+        "r",
+        encoding="utf-8"
+    ) as file:
+
+
+        lines = file.readlines()
+
+
+        for line in lines[1:]:
+
+            parts = line.strip().split(",")
+
+
+            if parts and parts[0].startswith("EXP-"):
+
+                number = int(
+                    parts[0].replace("EXP-","")
+                )
+
+
+                if number > highest_id:
+
+                    highest_id = number
+
+
+
+experiment_number = highest_id + 1
 
 
 experiment_id = (
