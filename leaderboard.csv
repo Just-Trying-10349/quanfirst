@@ -1,1 +1,2 @@
-experiment_id,return_percent,profit,status,parameters_hash,commit_sha,timestamp_utc
+experiment_id,return_percent,profit,status,parameters_hash,commit_sha,timestamp_eat
+EXP-0003,36.0,3600.0,completed,c516707c30379455f21349ff0cd978b35f27ced33e1aa19065faeb8e1449e082,4cc346a17ea4db9d8d314f2ee9e3c6dcf23a0b2c,2026-08-23T22:01:38+0300
