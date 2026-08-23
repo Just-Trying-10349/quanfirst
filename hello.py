@@ -2,346 +2,826 @@
 # QUANT RESEARCH AUTOMATION — LEVEL 7
 # ============================================================
 #
-# GitHub
-#    ↓
-# GitHub Actions
-#    ↓
-# Python experiment
-#    ↓
-# Experiment ID
-#    ↓
-# Result
-#    ↓
-# Leaderboard
-#    ↓
-# Best experiment
+# PURPOSE:
 #
-# AI IS NOT CONNECTED YET.
+# Level 7 teaches our research system to automatically identify
+# the best experiment performed so far.
 #
-# Later:
 #
-# GitHub Actions
-#       ↓
-# Python / VectorBT
-#       ↓
-# Many experiments
-#       ↓
+# CURRENT ARCHITECTURE:
+#
+# parameters.json
+#       |
+#       v
+#     hello.py
+#       |
+#       v
+#   EXP-0001
+#       |
+#       v
+# experiment result
+#       |
+#       v
 # leaderboard.csv
-#       ↓
-# External AI API
-#       ↓
-# AI analysis
-#       ↓
-# Improved parameters
+#       |
+#       v
+# compare experiments
+#       |
+#       v
+# best_experiment.json
+#
+#
+# IMPORTANT:
+#
+# We are NOT using AI yet.
+#
+# Python performs the comparison deterministically.
+#
+# Later, an external AI API can read:
+#
+#     leaderboard.csv
+#     best_experiment.json
+#     experiments/
+#
+# and help decide what should be tested next.
 #
 # ============================================================
 
 
-name: Quant Research Test
+import csv
+import hashlib
+import json
+import os
+import re
+import shutil
+
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
+
+
+print("=" * 70)
+print("QUANT RESEARCH EXPERIMENT — LEVEL 7")
+print("=" * 70)
 
 
 # ============================================================
-# WORKFLOW TRIGGERS
+# STEP 1
+# LOAD PARAMETERS
 # ============================================================
 
-on:
+parameters_file = Path("parameters.json")
 
-  # Run when repository changes
-  push:
 
-  # Allow manual execution
-  workflow_dispatch:
+with parameters_file.open(
+    "r",
+    encoding="utf-8"
+) as file:
 
-    inputs:
+    parameters = json.load(file)
 
-      force_rerun:
 
-        description: "Run even if parameters.json has not changed"
-
-        required: false
-
-        type: boolean
-
-        default: false
+print()
+print("Parameters loaded successfully.")
 
 
 # ============================================================
-# PERMISSIONS
-# ============================================================
-
-permissions:
-
-  contents: write
-
-
-# ============================================================
-# CONCURRENCY
+# STEP 2
+# CREATE PARAMETERS HASH
 # ============================================================
 #
-# Only one experiment workflow can modify the repository
-# at a time.
+# The hash gives every parameter configuration a fingerprint.
 #
-# This protects leaderboard.csv from simultaneous writes.
+# Example:
+#
+# parameters A -> abc123...
+# parameters B -> 72fd91...
+#
+# This will become useful later when we automatically search
+# parameter combinations.
 #
 # ============================================================
 
-concurrency:
+parameters_hash = hashlib.sha256(
+    json.dumps(
+        parameters,
+        sort_keys=True
+    ).encode("utf-8")
+).hexdigest()
 
-  group: quant-research-experiments
 
-  cancel-in-progress: false
+print()
+print("Parameters hash:")
+print(parameters_hash)
 
 
 # ============================================================
-# JOBS
+# STEP 3
+# LOAD EXISTING LEADERBOARD
 # ============================================================
 
-jobs:
+leaderboard_file = Path(
+    "leaderboard.csv"
+)
 
-  run-python:
 
-    runs-on: ubuntu-latest
+FIELDNAMES = [
+    "experiment_id",
+    "return_percent",
+    "profit",
+    "status",
+    "parameters_hash",
+    "commit_sha",
+    "timestamp_eat",
+]
 
 
-    steps:
+existing_rows = []
 
 
-      # ======================================================
-      # STEP 1
-      # GET REPOSITORY
-      # ======================================================
+if leaderboard_file.exists():
 
-      - name: Step 1 - Get repository
+    with leaderboard_file.open(
+        "r",
+        newline="",
+        encoding="utf-8"
+    ) as file:
 
-        uses: actions/checkout@v5
+        reader = csv.DictReader(file)
 
+        for row in reader:
 
-      # ======================================================
-      # STEP 2
-      # INSTALL PYTHON
-      # ======================================================
+            if row.get("experiment_id"):
 
-      - name: Step 2 - Setup Python
+                existing_rows.append(row)
 
-        uses: actions/setup-python@v6
 
-        with:
+print()
+print("Existing experiments:")
+print(len(existing_rows))
 
-          python-version: "3.12"
 
+# ============================================================
+# STEP 4
+# PREVENT ACCIDENTAL DUPLICATE EXPERIMENTS
+# ============================================================
 
-      # ======================================================
-      # STEP 3
-      # RUN EXPERIMENT
-      # ======================================================
+force_rerun = (
+    os.environ
+    .get(
+        "FORCE_RERUN",
+        "false"
+    )
+    .strip()
+    .lower()
+    == "true"
+)
 
-      - name: Step 3 - Run research experiment
 
-        env:
+last_row = (
+    existing_rows[-1]
+    if existing_rows
+    else None
+)
 
-          FORCE_RERUN: ${{ github.event.inputs.force_rerun || 'false' }}
 
-        run: |
+last_hash = (
+    last_row.get(
+        "parameters_hash"
+    )
+    if last_row
+    else None
+)
 
-          python hello.py
 
+if (
+    last_hash == parameters_hash
+    and not force_rerun
+):
 
-      # ======================================================
-      # STEP 4
-      # SHOW EXPERIMENT OUTPUT
-      # ======================================================
+    print()
+    print("=" * 70)
+    print("DUPLICATE PARAMETERS DETECTED")
+    print("=" * 70)
 
-      - name: Step 4 - Check experiment output
+    print()
 
-        run: |
+    print(
+        "The current parameters were already used by:"
+    )
 
-          echo ""
-          echo "======================================================"
-          echo "EXPERIMENT OUTPUT"
-          echo "======================================================"
+    print(
+        last_row["experiment_id"]
+    )
 
-          echo ""
+    print()
 
-          echo "Experiment directories:"
+    print(
+        "No new experiment was created."
+    )
 
-          ls -R experiments || echo "(no new experiment created)"
+    print()
 
-          echo ""
+    print(
+        "Use FORCE_RERUN=true if you deliberately "
+        "want to repeat the experiment."
+    )
 
-          echo "======================================================"
-          echo "LEADERBOARD"
-          echo "======================================================"
+    print()
 
-          if [ -f leaderboard.csv ]; then
+    raise SystemExit(0)
 
-            cat leaderboard.csv
 
-          else
+# ============================================================
+# STEP 5
+# CREATE EXPERIMENT DIRECTORY
+# ============================================================
 
-            echo "leaderboard.csv does not exist."
+experiment_folder = Path(
+    "experiments"
+)
 
-            exit 1
 
-          fi
+experiment_folder.mkdir(
+    exist_ok=True
+)
 
 
-      # ======================================================
-      # STEP 5
-      # SHOW CURRENT CHAMPION
-      # ======================================================
+# ============================================================
+# STEP 6
+# FIND HIGHEST EXISTING EXPERIMENT NUMBER
+# ============================================================
+#
+# We deliberately use the folders rather than leaderboard.csv.
+#
+# This prevents manually deleting a CSV row from causing an
+# old experiment number to be reused.
+#
+# Example:
+#
+# EXP-0001
+# EXP-0002
+# EXP-0007
+#
+# Next experiment:
+#
+# EXP-0008
+#
+# ============================================================
 
-      - name: Step 5 - Show research champion
+highest_experiment_number = 0
 
-        run: |
 
-          echo ""
-          echo "======================================================"
-          echo "CURRENT BEST EXPERIMENT"
-          echo "======================================================"
+experiment_pattern = re.compile(
+    r"^EXP-(\d+)$"
+)
 
-          echo ""
 
-          if [ -f best_experiment.json ]; then
+for item in experiment_folder.iterdir():
 
-            cat best_experiment.json
+    if not item.is_dir():
 
-          else
+        continue
 
-            echo "best_experiment.json was not created."
 
-            exit 1
+    match = experiment_pattern.match(
+        item.name
+    )
 
-          fi
 
-          echo ""
+    if match:
 
-          echo "======================================================"
+        number = int(
+            match.group(1)
+        )
 
 
-      # ======================================================
-      # STEP 6
-      # SAVE COMPLETE EXPERIMENT ARCHIVE
-      # ======================================================
+        if number > highest_experiment_number:
 
-      - name: Step 6 - Save experiment archive
+            highest_experiment_number = number
 
-        uses: actions/upload-artifact@v4
 
-        with:
+# ============================================================
+# STEP 7
+# CREATE NEW EXPERIMENT ID
+# ============================================================
 
-          name: experiment-history-${{ github.run_id }}
+experiment_number = (
+    highest_experiment_number + 1
+)
 
-          path: |
 
-            experiments/
+experiment_id = (
+    f"EXP-{experiment_number:04d}"
+)
 
-            leaderboard.csv
 
-            best_experiment.json
+print()
+print("New Experiment ID:")
+print(experiment_id)
 
 
-      # ======================================================
-      # STEP 7
-      # SAVE RESEARCH MEMORY BACK TO GITHUB
-      # ======================================================
+# ============================================================
+# STEP 8
+# GET GITHUB INFORMATION
+# ============================================================
 
-      - name: Step 7 - Commit experiment memory
+commit_sha = os.environ.get(
+    "GITHUB_SHA",
+    "local"
+)
 
-        run: |
 
-          git config --global user.name "github-actions"
+github_run_id = os.environ.get(
+    "GITHUB_RUN_ID",
+    "local"
+)
 
-          git config --global user.email "github-actions@github.com"
 
+print()
+print("Commit SHA:")
+print(commit_sha)
 
-          git add leaderboard.csv best_experiment.json
 
+print()
+print("GitHub Run ID:")
+print(github_run_id)
 
-          git commit \
-            -m "Update experiment research memory (${{ github.run_id }})" \
-            || echo "No changes to commit"
 
+# ============================================================
+# STEP 9
+# CREATE EAST AFRICA TIME
+# ============================================================
+#
+# Kenya / East Africa uses UTC+3.
+#
+# GitHub's runner itself uses UTC.
+#
+# Therefore we explicitly create UTC+3 rather than relying
+# on the computer's local timezone.
+#
+# ============================================================
 
-          for attempt in 1 2 3 4 5; do
+east_africa_timezone = timezone(
+    timedelta(hours=3)
+)
 
-            git pull --rebase origin "${GITHUB_REF_NAME}" \
-              && git push \
-              && break
 
-            echo "Push attempt $attempt failed, retrying..."
+run_timestamp = datetime.now(
+    east_africa_timezone
+).strftime(
+    "%Y-%m-%dT%H:%M:%S%z"
+)
 
-            sleep $((RANDOM % 5 + 1))
 
-          done
+print()
+print("East Africa Time:")
+print(run_timestamp)
 
 
-      # ======================================================
-      # STEP 8
-      # FINAL SUCCESS MESSAGE
-      # ======================================================
+# ============================================================
+# STEP 10
+# CREATE EXPERIMENT FOLDER
+# ============================================================
 
-      - name: Step 8 - Complete
+current_experiment = (
+    experiment_folder /
+    experiment_id
+)
 
-        run: |
 
-          echo ""
+# Safety check.
+#
+# Never overwrite an existing experiment.
 
-          echo "======================================================"
+if current_experiment.exists():
 
-          echo "QUANT RESEARCH LEVEL 7 COMPLETE"
+    raise RuntimeError(
+        f"SAFETY ERROR: "
+        f"{current_experiment} already exists. "
+        f"Existing experiment will NOT be overwritten."
+    )
 
-          echo "======================================================"
 
-          echo ""
+current_experiment.mkdir()
 
-          echo "The system now maintains:"
 
-          echo ""
+print()
+print("Experiment folder created:")
+print(current_experiment)
 
-          echo "1. Individual experiment IDs"
 
-          echo "2. Individual experiment folders"
+# ============================================================
+# STEP 11
+# RUN THE CURRENT EXPERIMENT
+# ============================================================
+#
+# This is still our deliberately simple mathematical
+# experiment.
+#
+# We are NOT introducing VectorBT yet.
+#
+# ============================================================
 
-          echo "3. Exact parameters"
+capital = parameters[
+    "starting_capital"
+]
 
-          echo "4. Exact Python code"
 
-          echo "5. Experiment results"
+strategy_return = parameters[
+    "strategy_return"
+]
 
-          echo "6. Experiment leaderboard"
 
-          echo "7. Current best experiment"
+ending_capital = (
+    capital *
+    (1 + strategy_return)
+)
 
-          echo ""
 
-          echo "AI is intentionally NOT connected yet."
+profit = (
+    ending_capital -
+    capital
+)
 
-          echo ""
 
-          echo "Future architecture:"
+return_percent = (
+    profit /
+    capital
+) * 100
 
-          echo "Python / VectorBT"
 
-          echo "       ↓"
+print()
+print("Experiment result:")
+print(
+    f"Return: {return_percent}%"
+)
 
-          echo "Many experiments"
+print(
+    f"Profit: {profit}"
+)
 
-          echo "       ↓"
 
-          echo "Leaderboard"
+# ============================================================
+# STEP 12
+# SAVE EXPERIMENT RESULT
+# ============================================================
 
-          echo "       ↓"
+result_file = (
+    current_experiment /
+    "experiment_result.txt"
+)
 
-          echo "External AI API"
 
-          echo "       ↓"
+with result_file.open(
+    "w",
+    encoding="utf-8"
+) as file:
 
-          echo "Research analysis"
+    file.write(
+        "QUANT RESEARCH EXPERIMENT\n"
+    )
 
-          echo "       ↓"
+    file.write(
+        "=" * 70 +
+        "\n"
+    )
 
-          echo "Improved experiments"
+    file.write(
+        f"Experiment ID: "
+        f"{experiment_id}\n"
+    )
 
-          echo ""
+    file.write(
+        f"GitHub Run ID: "
+        f"{github_run_id}\n"
+    )
 
-          echo "======================================================"
+    file.write(
+        f"Commit SHA: "
+        f"{commit_sha}\n"
+    )
+
+    file.write(
+        f"East Africa Time: "
+        f"{run_timestamp}\n\n"
+    )
+
+
+    file.write(
+        "PARAMETERS\n"
+    )
+
+    file.write(
+        "-" * 70 +
+        "\n"
+    )
+
+
+    for key, value in parameters.items():
+
+        file.write(
+            f"{key}: {value}\n"
+        )
+
+
+    file.write("\n")
+
+
+    file.write(
+        "RESULTS\n"
+    )
+
+    file.write(
+        "-" * 70 +
+        "\n"
+    )
+
+
+    file.write(
+        f"Starting capital: "
+        f"{capital}\n"
+    )
+
+
+    file.write(
+        f"Ending capital: "
+        f"{ending_capital}\n"
+    )
+
+
+    file.write(
+        f"Profit: "
+        f"{profit}\n"
+    )
+
+
+    file.write(
+        f"Return: "
+        f"{return_percent}%\n"
+    )
+
+
+# ============================================================
+# STEP 13
+# PRESERVE THE EXACT EXPERIMENT INPUTS
+# ============================================================
+
+shutil.copy(
+    "parameters.json",
+    current_experiment /
+    "parameters.json"
+)
+
+
+shutil.copy(
+    "hello.py",
+    current_experiment /
+    "hello.py"
+)
+
+
+print()
+print("Experiment files saved.")
+
+
+# ============================================================
+# STEP 14
+# UPDATE LEADERBOARD
+# ============================================================
+
+rows = existing_rows.copy()
+
+
+rows.append(
+    {
+        "experiment_id":
+            experiment_id,
+
+        "return_percent":
+            round(
+                return_percent,
+                2
+            ),
+
+        "profit":
+            round(
+                profit,
+                2
+            ),
+
+        "status":
+            "completed",
+
+        "parameters_hash":
+            parameters_hash,
+
+        "commit_sha":
+            commit_sha,
+
+        "timestamp_eat":
+            run_timestamp,
+    }
+)
+
+
+with leaderboard_file.open(
+    "w",
+    newline="",
+    encoding="utf-8"
+) as file:
+
+    writer = csv.DictWriter(
+        file,
+        fieldnames=FIELDNAMES
+    )
+
+    writer.writeheader()
+
+    writer.writerows(rows)
+
+
+print()
+print("Leaderboard updated.")
+
+
+# ============================================================
+# STEP 15
+# LEVEL 7 — FIND THE BEST EXPERIMENT
+# ============================================================
+#
+# For now our only objective is:
+#
+#     HIGHEST RETURN
+#
+# Later we will replace this with a much more sophisticated
+# objective involving things such as:
+#
+#     Sharpe ratio
+#     Maximum drawdown
+#     volatility
+#     win rate
+#     profit factor
+#     number of trades
+#
+# ============================================================
+
+print()
+print("=" * 70)
+print("LEVEL 7 — SEARCHING FOR CURRENT BEST EXPERIMENT")
+print("=" * 70)
+
+
+best_experiment = None
+
+
+for row in rows:
+
+    try:
+
+        current_return = float(
+            row["return_percent"]
+        )
+
+    except (
+        ValueError,
+        TypeError
+    ):
+
+        continue
+
+
+    if best_experiment is None:
+
+        best_experiment = row
+
+    else:
+
+        best_return = float(
+            best_experiment[
+                "return_percent"
+            ]
+        )
+
+
+        if current_return > best_return:
+
+            best_experiment = row
+
+
+# ============================================================
+# STEP 16
+# SAVE BEST EXPERIMENT
+# ============================================================
+
+best_file = Path(
+    "best_experiment.json"
+)
+
+
+if best_experiment is not None:
+
+    with best_file.open(
+        "w",
+        encoding="utf-8"
+    ) as file:
+
+        json.dump(
+            best_experiment,
+            file,
+            indent=4
+        )
+
+
+    print()
+    print("CURRENT RESEARCH CHAMPION")
+    print("-" * 70)
+
+    print(
+        f"Experiment ID: "
+        f"{best_experiment['experiment_id']}"
+    )
+
+    print(
+        f"Return: "
+        f"{best_experiment['return_percent']}%"
+    )
+
+    print(
+        f"Profit: "
+        f"{best_experiment['profit']}"
+    )
+
+    print()
+
+    print(
+        "Champion saved to:"
+    )
+
+    print(
+        "best_experiment.json"
+    )
+
+
+else:
+
+    print()
+    print(
+        "WARNING: No valid experiments found."
+    )
+
+
+# ============================================================
+# STEP 17
+# FINAL SUMMARY
+# ============================================================
+
+print()
+print("=" * 70)
+print("LEVEL 7 EXPERIMENT COMPLETE")
+print("=" * 70)
+
+print()
+
+print(
+    f"Experiment ID: {experiment_id}"
+)
+
+print(
+    f"Return: {return_percent}%"
+)
+
+print(
+    f"Profit: {profit}"
+)
+
+print(
+    f"East Africa Time: {run_timestamp}"
+)
+
+print()
+
+print(
+    "Experiment saved:"
+)
+
+print(
+    current_experiment
+)
+
+print()
+
+if best_experiment is not None:
+
+    print(
+        "Current champion:"
+    )
+
+    print(
+        best_experiment[
+            "experiment_id"
+        ]
+    )
+
+print()
+
+print("=" * 70)
