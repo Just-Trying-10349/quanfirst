@@ -46,8 +46,9 @@ import csv
 import hashlib
 import json
 import os
-import re
 import shutil
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
 
 from datetime import datetime, timezone
 from pathlib import Path
@@ -375,13 +376,11 @@ commit_sha = os.environ.get(
 )
 
 
+from datetime import datetime, timezone, timedelta
+
 run_timestamp = (
-    datetime.now(
-        timezone.utc
-    ).strftime(
-        "%Y-%m-%dT%H:%M:%SZ"
-    )
-)
+    datetime.now(timezone.utc) + timedelta(hours=3)
+).strftime("%Y-%m-%dT%H:%M:%S+03:00")
 
 
 print()
