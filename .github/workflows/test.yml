@@ -1,134 +1,46 @@
 # ============================================================
-# QUANT RESEARCH AUTOMATION — LEVEL 3
+# QUANT RESEARCH AUTOMATION — LEVEL 5
+# Experiment Memory System
 # ============================================================
-#
-# PURPOSE:
-#
-# This workflow proves that GitHub Actions can:
-#
-# 1. Download our repository
-# 2. Install Python
-# 3. Run our Python experiment
-# 4. Produce measurable results
-# 5. Verify that the result was actually created
-# 6. Save the result
-# 7. Save the exact Python code that produced the result
-#
-#
-# CURRENT ARCHITECTURE:
-#
-# GitHub
-#    ↓
-# GitHub Actions
-#    ↓
-# Python experiment
-#    ↓
-# Result
-#    ↓
-# Save result + source code
-#
-#
-# FUTURE ARCHITECTURE:
-#
-# Strategy
-#    ↓
-# VectorBT
-#    ↓
-# Backtest
-#    ↓
-# Parameters
-#    ↓
-# Metrics
-#    ↓
-# AI analysis
-#    ↓
-# Improved strategy
-#    ↓
-# New experiment
-#
-# ============================================================
-
 
 name: Quant Research Test
 
 
-# ============================================================
-# WHEN SHOULD THIS WORKFLOW RUN?
-# ============================================================
-
 on:
 
-  # Automatically run whenever we push a change
   push:
 
-  # Allow us to manually start the workflow
   workflow_dispatch:
 
 
-# ============================================================
-# JOBS
-# ============================================================
-
 jobs:
-
-
-  # ==========================================================
-  # JOB: RUN PYTHON RESEARCH EXPERIMENT
-  # ==========================================================
 
   run-python:
 
-    # GitHub provides a temporary Linux computer
+
     runs-on: ubuntu-latest
 
-
-    # ========================================================
-    # STEPS
-    # ========================================================
 
     steps:
 
 
       # ------------------------------------------------------
       # STEP 1
-      # DOWNLOAD OUR REPOSITORY
-      # ------------------------------------------------------
-      #
-      # This copies our GitHub repository onto the temporary
-      # GitHub Actions computer.
-      #
-      # After this step GitHub can see:
-      #
-      # hello.py
-      # README.md
-      # .github/workflows/test.yml
-      #
+      # DOWNLOAD CODE
       # ------------------------------------------------------
 
-      - name: Step 1 - Get our code
+      - name: Step 1 - Get repository
 
         uses: actions/checkout@v5
+
 
 
       # ------------------------------------------------------
       # STEP 2
       # INSTALL PYTHON
       # ------------------------------------------------------
-      #
-      # We use Python 3.12 for this research environment.
-      #
-      # Later we will install:
-      #
-      # pandas
-      # numpy
-      # vectorbt
-      # scikit-learn
-      # Alpaca SDK
-      # etc.
-      #
-      # ------------------------------------------------------
 
-      - name: Step 2 - Set up Python
+      - name: Step 2 - Setup Python
 
         uses: actions/setup-python@v6
 
@@ -137,189 +49,73 @@ jobs:
           python-version: "3.12"
 
 
+
       # ------------------------------------------------------
       # STEP 3
-      # RUN OUR PYTHON EXPERIMENT
-      # ------------------------------------------------------
-      #
-      # hello.py performs our current simple experiment.
-      #
-      # It should:
-      #
-      # 1. Calculate a hypothetical strategy result
-      # 2. Display the metrics
-      # 3. Create experiment_result.txt
-      #
+      # RUN EXPERIMENT
       # ------------------------------------------------------
 
       - name: Step 3 - Run research experiment
 
-        run: python hello.py
+        run: |
+
+          python hello.py
+
 
 
       # ------------------------------------------------------
       # STEP 4
-      # VERIFY THE RESULT FILE
-      # ------------------------------------------------------
-      #
-      # GitHub Actions computers are temporary.
-      #
-      # Therefore we explicitly check that our Python program
-      # actually produced the file we expect.
-      #
-      # If the file does NOT exist, this step fails.
-      #
-      # This is important for our future AI system because we
-      # don't want to call an experiment successful simply
-      # because Python stopped without an error.
-      #
+      # SHOW CREATED EXPERIMENT
       # ------------------------------------------------------
 
-      - name: Step 4 - Verify result file
+      - name: Step 4 - Check experiment folder
 
         run: |
 
-          echo "=============================================="
-          echo "CHECKING EXPERIMENT RESULT"
-          echo "=============================================="
+          echo "======================================"
+          echo "CHECKING EXPERIMENT OUTPUT"
+          echo "======================================"
 
-          echo ""
 
-          if [ -f experiment_result.txt ]; then
+          ls -R experiments
 
-            echo "SUCCESS:"
-            echo "experiment_result.txt exists."
-
-            echo ""
-
-            echo "RESULT FILE CONTENTS:"
-            echo "----------------------------------------------"
-
-            cat experiment_result.txt
-
-            echo "----------------------------------------------"
-
-          else
-
-            echo "ERROR:"
-            echo "experiment_result.txt does not exist."
-
-            echo ""
-
-            echo "The Python experiment did not create the"
-            echo "expected result file."
-
-            exit 1
-
-          fi
 
 
       # ------------------------------------------------------
       # STEP 5
-      # VERIFY THE SOURCE CODE
-      # ------------------------------------------------------
-      #
-      # We also check that hello.py exists.
-      #
-      # This is important because eventually every experiment
-      # needs to preserve the exact code responsible for its
-      # results.
-      #
+      # SAVE COMPLETE EXPERIMENT
       # ------------------------------------------------------
 
-      - name: Step 5 - Verify source code
+      - name: Step 5 - Save experiment archive
 
-        run: |
+        uses: actions/upload-artifact@v4
 
-          echo "=============================================="
-          echo "CHECKING SOURCE CODE"
-          echo "=============================================="
+        with:
 
-          echo ""
+          name: experiment-history
 
-          if [ -f hello.py ]; then
+          path: |
 
-            echo "SUCCESS:"
-            echo "hello.py exists."
+            experiments/
 
-            echo ""
-
-            echo "SOURCE CODE:"
-            echo "----------------------------------------------"
-
-            cat hello.py
-
-            echo "----------------------------------------------"
-
-          else
-
-            echo "ERROR:"
-            echo "hello.py does not exist."
-
-            exit 1
-
-          fi
 
 
       # ------------------------------------------------------
       # STEP 6
-      # SAVE COMPLETE EXPERIMENT
-      # ------------------------------------------------------
-      #
-      # We now preserve:
-      #
-      # 1. The result
-      # 2. The Python code
-      # 3. The parameters
-      #
-      # ------------------------------------------------------
-  
-      - name: Step 6 - Save complete experiment
-  
-        uses: actions/upload-artifact@v4
-  
-        with:
-  
-          name: experiment-result-code-and-parameters
-  
-          path: |
-            experiments/
-
-
-      # ------------------------------------------------------
-      # STEP 7
-      # FINAL SUCCESS MESSAGE
-      # ------------------------------------------------------
-      #
-      # This is simply a visible confirmation in the Actions
-      # log that all required stages completed.
-      #
+      # SUCCESS MESSAGE
       # ------------------------------------------------------
 
-      - name: Step 7 - Confirm experiment completed
+      - name: Step 6 - Complete
 
         run: |
 
           echo ""
-          echo "======================================================"
-          echo "QUANT RESEARCH EXPERIMENT COMPLETED SUCCESSFULLY"
-          echo "======================================================"
+          echo "======================================"
+          echo "EXPERIMENT SUCCESSFULLY SAVED"
+          echo "======================================"
 
           echo ""
 
-          echo "The experiment produced:"
-          echo ""
+          echo "Saved contents:"
 
-          echo "1. experiment_result.txt"
-          echo "2. hello.py"
-          echo ""
-
-          echo "Both files were uploaded as a GitHub artifact."
-
-          echo ""
-
-          echo "Future stages will replace the simple experiment"
-          echo "with VectorBT backtests, parameters, metrics,"
-          echo "optimization and eventually AI-assisted research."
-
-          echo "======================================================"
+          ls -R experiments
