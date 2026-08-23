@@ -1,125 +1,339 @@
 # ============================================================
-# QUANT RESEARCH AUTOMATION — LEVEL 5 (FIXED v2)
-# Experiment Memory System
+# QUANT RESEARCH AUTOMATION — LEVEL 5
 # ============================================================
 #
-# FIX SUMMARY (v2):
-# Your run history showed every push firing the workflow AND you
-# manually clicking "Run workflow" a couple minutes later — both with
-# the same parameters.json, producing two experiments with identical
-# results. That's not a bug, it's two real triggers doing what they
-# were told.
+# PURPOSE:
 #
-# Fix: hello.py now skips creating a new experiment if parameters.json
-# is unchanged since the last recorded row. This workflow exposes a
-# "force_rerun" checkbox so you can still deliberately force a rerun
-# on unchanged parameters when you actually want to (e.g. testing).
+# GitHub Actions automatically:
+#
+#   1. Downloads the repository
+#   2. Installs Python
+#   3. Runs hello.py
+#   4. Prevents duplicate parameter experiments
+#   5. Creates sequential experiment IDs
+#   6. Saves experiment files
+#   7. Updates leaderboard.csv
+#   8. Preserves the experiment history
+#
+#
+# EXPERIMENT IDs:
+#
+#   EXP-0001
+#   EXP-0002
+#   EXP-0003
+#   EXP-0004
+#
+#
+# TECHNICAL TRACEABILITY:
+#
+# Each experiment also records:
+#
+#   commit SHA
+#   timestamp
+#   parameter hash
+#
+#
+# FUTURE:
+#
+#   Parameters
+#        ↓
+#   VectorBT
+#        ↓
+#   Backtest
+#        ↓
+#   Metrics
+#        ↓
+#   Parameter search
+#        ↓
+#   Best experiments
+#        ↓
+#   AI analysis
+#
 # ============================================================
+
+
 name: Quant Research Test
 
+
+# ============================================================
+# WHEN SHOULD THE WORKFLOW RUN?
+# ============================================================
+
 on:
+
+  # Run whenever repository code is pushed.
   push:
+
+  # Also allow manual execution.
   workflow_dispatch:
+
     inputs:
+
       force_rerun:
-        description: "Run even if parameters.json hasn't changed"
+
+        description:
+          "Run even if parameters.json has not changed"
+
         required: false
+
         type: boolean
+
         default: false
 
+
+# ============================================================
+# PERMISSIONS
+# ============================================================
+#
+# The workflow needs permission to write the updated
+# leaderboard and experiment history back to GitHub.
+#
+# ============================================================
+
 permissions:
+
   contents: write
 
-# Ensures only ONE run of this workflow touches the repo/leaderboard
-# at a time. Extra triggers wait in line rather than racing.
+
+# ============================================================
+# CONCURRENCY
+# ============================================================
+#
+# Prevent two experiments from modifying the repository
+# simultaneously.
+#
+# ============================================================
+
 concurrency:
+
   group: quant-research-experiments
+
   cancel-in-progress: false
 
+
+# ============================================================
+# JOB
+# ============================================================
+
 jobs:
+
   run-python:
+
     runs-on: ubuntu-latest
+
+
     steps:
+
+
       # ------------------------------------------------------
       # STEP 1
-      # DOWNLOAD CODE
+      # GET REPOSITORY
       # ------------------------------------------------------
+
       - name: Step 1 - Get repository
+
         uses: actions/checkout@v5
+
 
       # ------------------------------------------------------
       # STEP 2
-      # INSTALL PYTHON
+      # SET UP PYTHON
       # ------------------------------------------------------
+
       - name: Step 2 - Setup Python
+
         uses: actions/setup-python@v6
+
         with:
+
           python-version: "3.12"
+
 
       # ------------------------------------------------------
       # STEP 3
-      # RUN EXPERIMENT (skips automatically if params unchanged,
-      # unless force_rerun was checked on a manual run)
+      # RUN EXPERIMENT
       # ------------------------------------------------------
+      #
+      # FORCE_RERUN is normally false.
+      #
+      # Therefore unchanged parameters are skipped.
+      #
+      # A deliberate manual rerun can set it to true.
+      #
+      # ------------------------------------------------------
+
       - name: Step 3 - Run research experiment
+
         env:
-          FORCE_RERUN: ${{ github.event.inputs.force_rerun || 'false' }}
+
+          FORCE_RERUN:
+            ${{ github.event.inputs.force_rerun || 'false' }}
+
         run: |
+
           python hello.py
+
 
       # ------------------------------------------------------
       # STEP 4
-      # SHOW CREATED EXPERIMENT
+      # DISPLAY EXPERIMENT HISTORY
       # ------------------------------------------------------
-      - name: Step 4 - Check experiment folder
+
+      - name: Step 4 - Check experiment output
+
         run: |
-          echo "======================================"
-          echo "CHECKING EXPERIMENT OUTPUT"
-          echo "======================================"
-          ls -R experiments || echo "(no new experiment this run)"
+
+          echo "=============================================="
+
+          echo "EXPERIMENT OUTPUT"
+
+          echo "=============================================="
+
+          echo ""
+
+          echo "Experiment directories:"
+
+          ls -la experiments || true
+
+          echo ""
+
+          echo "Full experiment tree:"
+
+          find experiments -maxdepth 2 -type f -print || true
+
+          echo ""
+
+          echo "Leaderboard:"
+
+          cat leaderboard.csv || true
+
 
       # ------------------------------------------------------
       # STEP 5
-      # SAVE COMPLETE EXPERIMENT
+      # SAVE EXPERIMENT ARTIFACT
       # ------------------------------------------------------
+      #
+      # This gives us a downloadable copy of the research
+      # history from the GitHub Actions run.
+      #
+      # ------------------------------------------------------
+
       - name: Step 5 - Save experiment archive
+
         uses: actions/upload-artifact@v4
+
         with:
-          name: experiment-history-${{ github.run_id }}
+
+          name:
+            experiment-history-${{ github.run_id }}
+
           path: |
+
             experiments/
+
             leaderboard.csv
+
 
       # ------------------------------------------------------
       # STEP 6
-      # SAVE LEADERBOARD BACK TO GITHUB (race-safe)
+      # COMMIT EXPERIMENT MEMORY BACK TO GITHUB
       # ------------------------------------------------------
+      #
+      # IMPORTANT:
+      #
+      # We now save BOTH:
+      #
+      #   leaderboard.csv
+      #
+      # AND
+      #
+      #   experiments/
+      #
+      # to the repository.
+      #
+      # This means the experiment history survives the temporary
+      # GitHub Actions computer.
+      #
+      # ------------------------------------------------------
+
       - name: Step 6 - Commit experiment memory
+
         run: |
+
           git config --global user.name "github-actions"
+
           git config --global user.email "github-actions@github.com"
 
-          git add leaderboard.csv
-          git commit -m "Update experiment leaderboard (${{ github.run_id }})" || echo "No changes to commit"
 
-          # Retry the push a few times: pull --rebase first in case another
-          # run landed a commit in between, then try to push again.
+          # Add the leaderboard.
+
+          git add leaderboard.csv
+
+
+          # Add the experiment directories.
+
+          git add experiments/
+
+
+          # Commit if there are changes.
+
+          git commit \
+            -m "Update experiment history (${{ github.run_id }})" \
+            || echo "No changes to commit"
+
+
+          # --------------------------------------------------
+          # Push safely.
+          # --------------------------------------------------
+
           for attempt in 1 2 3 4 5; do
-            git pull --rebase origin "${GITHUB_REF_NAME}" && git push && break
-            echo "Push attempt $attempt failed, retrying..."
+
+            git pull --rebase origin "${GITHUB_REF_NAME}" \
+              && git push \
+              && break
+
+            echo "Push attempt $attempt failed."
+
+            echo "Retrying..."
+
             sleep $((RANDOM % 5 + 1))
+
           done
+
 
       # ------------------------------------------------------
       # STEP 7
-      # SUCCESS MESSAGE
+      # FINAL CONFIRMATION
       # ------------------------------------------------------
+
       - name: Step 7 - Complete
+
         run: |
+
           echo ""
-          echo "======================================"
-          echo "EXPERIMENT WORKFLOW COMPLETE"
-          echo "======================================"
+
+          echo "=============================================="
+
+          echo "QUANT RESEARCH WORKFLOW COMPLETE"
+
+          echo "=============================================="
+
           echo ""
-          echo "Saved contents:"
-          ls -R experiments || echo "(no new experiment this run)"
+
+          echo "Experiment history:"
+
+          find experiments -maxdepth 2 -type f -print || true
+
+          echo ""
+
+          echo "Leaderboard:"
+
+          cat leaderboard.csv
+
+          echo ""
+
+          echo "=============================================="
+
+          echo "END"
+
+          echo "=============================================="
