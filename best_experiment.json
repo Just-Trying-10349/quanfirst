@@ -1,0 +1,9 @@
+{
+    "experiment_id": "EXP-0008",
+    "return_percent": 22.0,
+    "profit": 2200.0,
+    "status": "completed",
+    "parameters_hash": "a762ba513093eca235745bf517d5a291b5d5da9bbff2f7c767b136efc4f76452",
+    "commit_sha": "f865721666c6634ae315d183a004ab8b247e9744",
+    "timestamp_eat": "2026-08-24T00:26:00+0300"
+}
