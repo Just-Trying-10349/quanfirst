@@ -231,7 +231,56 @@ shutil.copy(
     "hello.py"
 )
 
+# ------------------------------------------------------------
+# STEP 7
+# UPDATE LEADERBOARD
+# ------------------------------------------------------------
 
+import csv
+
+
+leaderboard_file = Path("leaderboard.csv")
+
+
+file_exists = leaderboard_file.exists()
+
+
+with leaderboard_file.open(
+    "a",
+    newline="",
+    encoding="utf-8"
+) as file:
+
+
+    writer = csv.writer(file)
+
+
+    if not file_exists:
+
+        writer.writerow(
+            [
+                "experiment_id",
+                "return_percent",
+                "profit",
+                "status"
+            ]
+        )
+
+
+    writer.writerow(
+        [
+            experiment_id,
+            round(return_percent,2),
+            round(profit,2),
+            "completed"
+        ]
+    )
+
+
+print()
+
+print("Leaderboard updated:")
+print(leaderboard_file)
 
 # ------------------------------------------------------------
 # FINISH
