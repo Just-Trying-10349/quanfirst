@@ -106,10 +106,32 @@ jobs:
 
       # ------------------------------------------------------
       # STEP 6
+      # SAVE LEADERBOARD BACK TO GITHUB
+      # ------------------------------------------------------
+
+      - name: Step 6 - Commit experiment memory
+
+        run: |
+
+          git config --global user.name "github-actions"
+
+          git config --global user.email "github-actions@github.com"
+
+
+          git add leaderboard.csv
+
+
+          git commit -m "Update experiment leaderboard" || echo "No changes to commit"
+
+
+          git push
+
+      # ------------------------------------------------------
+      # STEP 7
       # SUCCESS MESSAGE
       # ------------------------------------------------------
 
-      - name: Step 6 - Complete
+      - name: Step 7 - Complete
 
         run: |
 
