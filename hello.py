@@ -1,32 +1,34 @@
 # ============================================================
 # QUANT RESEARCH AUTOMATION — LEVEL 5
-# Experiment Memory System
+# EXPERIMENT MEMORY SYSTEM
 # ============================================================
 #
 # PURPOSE:
 #
-# Every successful experiment receives a permanent ID:
+# Every successful experiment receives a clean sequential ID:
 #
 #     EXP-0001
 #     EXP-0002
 #     EXP-0003
 #     ...
 #
-# Each experiment saves:
+# The system also records:
 #
-# 1. Experiment result
-# 2. Exact parameters used
-# 3. Exact Python code used
-# 4. Experiment ID
-# 5. Commit SHA
-# 6. East Africa Time (UTC+3)
+#     - strategy result
+#     - profit
+#     - parameters
+#     - exact Python code
+#     - parameter hash
+#     - Git commit SHA
+#     - East Africa Time (UTC+3)
 #
-# The leaderboard keeps the history of experiments.
+# IMPORTANT:
 #
-# DUPLICATE PROTECTION:
+# Experiment numbers are determined from the EXISTING
+# experiment folders, not from GitHub Run IDs.
 #
-# If parameters.json has not changed since the last experiment,
-# the experiment is skipped unless FORCE_RERUN=true.
+# This prevents EXP-0001 from being recreated after
+# leaderboard rows are manually deleted.
 #
 # ============================================================
 
@@ -35,6 +37,7 @@ import csv
 import hashlib
 import json
 import os
+import re
 import shutil
 
 from datetime import datetime, timezone, timedelta
@@ -62,10 +65,21 @@ with parameters_file.open(
     parameters = json.load(file)
 
 
-# Create a fingerprint of the parameters.
+print()
+print("Parameters loaded successfully.")
+
+
+# ============================================================
+# STEP 2
+# CREATE PARAMETERS HASH
+# ============================================================
 #
-# This lets us determine whether the parameters have changed
-# since the previous experiment.
+# The hash allows us to determine whether the parameters
+# are identical to the last recorded experiment.
+#
+# This helps prevent accidental duplicate experiments.
+#
+# ============================================================
 
 parameters_hash = hashlib.sha256(
     json.dumps(
@@ -75,9 +89,14 @@ parameters_hash = hashlib.sha256(
 ).hexdigest()
 
 
+print()
+print("Parameters hash:")
+print(parameters_hash)
+
+
 # ============================================================
-# STEP 2
-# LEADERBOARD SETTINGS
+# STEP 3
+# LOAD LEADERBOARD HISTORY
 # ============================================================
 
 leaderboard_file = Path("leaderboard.csv")
@@ -94,11 +113,6 @@ FIELDNAMES = [
 ]
 
 
-# ============================================================
-# STEP 3
-# READ EXISTING EXPERIMENT HISTORY
-# ============================================================
-
 existing_rows = []
 
 
@@ -114,23 +128,32 @@ if leaderboard_file.exists():
 
         for row in reader:
 
-            # Only keep properly formed experiment rows.
-
             if row.get("experiment_id"):
 
                 existing_rows.append(row)
 
 
+print()
+print("Previous leaderboard records:")
+print(len(existing_rows))
+
+
 # ============================================================
 # STEP 4
-# CHECK WHETHER PARAMETERS CHANGED
+# CHECK FOR DUPLICATE PARAMETERS
+# ============================================================
+#
+# Unless FORCE_RERUN=true, the same parameters will not
+# automatically create another experiment.
+#
 # ============================================================
 
 force_rerun = (
-    os.environ.get(
-        "FORCE_RERUN",
-        "false"
-    ).strip().lower() == "true"
+    os.environ
+    .get("FORCE_RERUN", "false")
+    .strip()
+    .lower()
+    == "true"
 )
 
 
@@ -154,32 +177,31 @@ if (
 ):
 
     print()
-
-    print(
-        "NO NEW EXPERIMENT CREATED."
-    )
-
-    print(
-        "parameters.json is unchanged "
-        "from the previous experiment."
-    )
-
-    if last_row:
-
-        print(
-            f"Previous experiment: "
-            f"{last_row['experiment_id']}"
-        )
+    print("=" * 70)
+    print("DUPLICATE PARAMETERS DETECTED")
+    print("=" * 70)
 
     print()
-
     print(
-        "Change parameters.json to create "
-        "a new experiment."
+        "These parameters were already used by:"
     )
 
     print(
-        "Alternatively use FORCE_RERUN=true."
+        last_row["experiment_id"]
+    )
+
+    print()
+    print(
+        "No new experiment was created."
+    )
+
+    print()
+    print(
+        "To deliberately run the same parameters again,"
+    )
+
+    print(
+        "use FORCE_RERUN=true."
     )
 
     print()
@@ -189,20 +211,8 @@ if (
 
 # ============================================================
 # STEP 5
-# CREATE EXPERIMENT ID
+# CREATE EXPERIMENT ROOT DIRECTORY
 # ============================================================
-#
-# We deliberately use the simple numbering system:
-#
-# EXP-0001
-# EXP-0002
-# EXP-0003
-#
-# The number is based on the highest experiment number already
-# recorded in leaderboard.csv.
-#
-# ============================================================
-
 
 experiment_folder = Path("experiments")
 
@@ -212,41 +222,71 @@ experiment_folder.mkdir(
 )
 
 
-highest_id = 0
+# ============================================================
+# STEP 6
+# FIND HIGHEST EXISTING EXPERIMENT NUMBER
+# ============================================================
+#
+# IMPORTANT:
+#
+# We look directly at the experiment folders.
+#
+# Example:
+#
+# experiments/
+#     EXP-0001/
+#     EXP-0002/
+#     EXP-0007/
+#
+# The next experiment becomes:
+#
+#     EXP-0008
+#
+# This means deleting a leaderboard row will NOT cause
+# an old experiment number to be reused.
+#
+# ============================================================
+
+highest_experiment_number = 0
 
 
-for row in existing_rows:
-
-    experiment_id_text = row.get(
-        "experiment_id",
-        ""
-    ).strip()
+experiment_pattern = re.compile(
+    r"^EXP-(\d+)$"
+)
 
 
-    if experiment_id_text.startswith("EXP-"):
+for item in experiment_folder.iterdir():
 
-        try:
+    if not item.is_dir():
 
-            number = int(
-                experiment_id_text.replace(
-                    "EXP-",
-                    ""
-                )
-            )
+        continue
 
 
-            if number > highest_id:
-
-                highest_id = number
-
-        except ValueError:
-
-            # Ignore malformed experiment IDs.
-
-            pass
+    match = experiment_pattern.match(
+        item.name
+    )
 
 
-experiment_number = highest_id + 1
+    if match:
+
+        number = int(
+            match.group(1)
+        )
+
+
+        if number > highest_experiment_number:
+
+            highest_experiment_number = number
+
+
+# ============================================================
+# STEP 7
+# CREATE NEXT EXPERIMENT ID
+# ============================================================
+
+experiment_number = (
+    highest_experiment_number + 1
+)
 
 
 experiment_id = (
@@ -254,11 +294,15 @@ experiment_id = (
 )
 
 
-# ============================================================
-# STEP 6
-# GET GITHUB INFORMATION
-# ============================================================
+print()
+print("New Experiment ID:")
+print(experiment_id)
 
+
+# ============================================================
+# STEP 8
+# GITHUB INFORMATION
+# ============================================================
 
 commit_sha = os.environ.get(
     "GITHUB_SHA",
@@ -266,63 +310,55 @@ commit_sha = os.environ.get(
 )
 
 
-# ============================================================
-# STEP 7
-# CREATE EAST AFRICA TIME
-# ============================================================
-#
-# GitHub's computer normally works with UTC.
-#
-# Kenya / East Africa is UTC+3.
-#
-# We therefore calculate:
-#
-# UTC + 3 hours
-#
-# Example:
-#
-# 01:00 UTC
-# becomes
-# 04:00 EAT
-#
-# ============================================================
+github_run_id = os.environ.get(
+    "GITHUB_RUN_ID",
+    "local"
+)
 
+
+print()
+print("Git commit:")
+print(commit_sha)
+
+
+print()
+print("GitHub run ID:")
+print(github_run_id)
+
+
+# ============================================================
+# STEP 9
+# EAST AFRICA TIME
+# ============================================================
+#
+# Kenya uses UTC+3.
+#
+# We explicitly create a UTC+3 timezone rather than depending
+# on the temporary GitHub runner's local timezone.
+#
+# ============================================================
 
 east_africa_timezone = timezone(
     timedelta(hours=3)
 )
 
 
-run_timestamp = (
-    datetime.now(timezone.utc)
-    .astimezone(east_africa_timezone)
-    .strftime(
-        "%Y-%m-%dT%H:%M:%S+03:00"
-    )
+run_timestamp = datetime.now(
+    east_africa_timezone
+).strftime(
+    "%Y-%m-%dT%H:%M:%S%z"
 )
 
 
 print()
-
-print("Experiment ID:")
-print(experiment_id)
-
-print()
-
-print("Commit SHA:")
-print(commit_sha)
-
-print()
-
 print("East Africa Time:")
 print(run_timestamp)
 
 
 # ============================================================
-# STEP 8
+# STEP 10
 # CREATE EXPERIMENT DIRECTORY
 # ============================================================
-
 
 current_experiment = (
     experiment_folder /
@@ -330,42 +366,34 @@ current_experiment = (
 )
 
 
-current_experiment.mkdir(
-    exist_ok=False
-)
+# Safety check.
+#
+# This should never happen because we determined the next ID
+# from the existing folders.
+#
+# But if it somehow does, we stop rather than overwrite data.
+
+if current_experiment.exists():
+
+    raise RuntimeError(
+        f"SAFETY ERROR: "
+        f"{current_experiment} already exists. "
+        f"Experiment data will NOT be overwritten."
+    )
+
+
+current_experiment.mkdir()
 
 
 print()
-
 print("Experiment folder created:")
-
 print(current_experiment)
 
 
 # ============================================================
-# STEP 9
+# STEP 11
 # RUN SIMPLE EXPERIMENT
 # ============================================================
-#
-# THIS IS STILL OUR SIMPLE TEST STRATEGY.
-#
-# Later this section will become:
-#
-# VectorBT
-#     ↓
-# historical market data
-#     ↓
-# strategy
-#     ↓
-# backtest
-#     ↓
-# metrics
-#
-# Eventually an optimizer/AI system will modify the
-# parameters and repeatedly run this section.
-#
-# ============================================================
-
 
 capital = parameters[
     "starting_capital"
@@ -395,11 +423,21 @@ return_percent = (
 ) * 100
 
 
-# ============================================================
-# STEP 10
-# SAVE EXPERIMENT RESULT
-# ============================================================
+print()
+print("Experiment result:")
+print(
+    f"Return: {return_percent}%"
+)
 
+print(
+    f"Profit: {profit}"
+)
+
+
+# ============================================================
+# STEP 12
+# SAVE RESULT
+# ============================================================
 
 result_file = (
     current_experiment /
@@ -427,16 +465,19 @@ with result_file.open(
     )
 
     file.write(
+        f"GitHub Run ID: "
+        f"{github_run_id}\n"
+    )
+
+    file.write(
         f"Commit SHA: "
         f"{commit_sha}\n"
     )
 
     file.write(
-        f"Timestamp EAT: "
-        f"{run_timestamp}\n"
+        f"East Africa Time: "
+        f"{run_timestamp}\n\n"
     )
-
-    file.write("\n")
 
 
     file.write(
@@ -468,7 +509,6 @@ with result_file.open(
         "\n"
     )
 
-
     file.write(
         f"Starting capital: "
         f"{capital}\n"
@@ -491,22 +531,15 @@ with result_file.open(
 
 
 # ============================================================
-# STEP 11
-# PRESERVE THE EXACT PARAMETERS
+# STEP 13
+# SAVE PARAMETERS AND PYTHON CODE
 # ============================================================
 
-
 shutil.copy(
-    parameters_file,
+    "parameters.json",
     current_experiment /
     "parameters.json"
 )
-
-
-# ============================================================
-# STEP 12
-# PRESERVE THE EXACT PYTHON CODE
-# ============================================================
 
 
 shutil.copy(
@@ -516,53 +549,68 @@ shutil.copy(
 )
 
 
-# ============================================================
-# STEP 13
-# UPDATE LEADERBOARD
-# ============================================================
+print()
+print("Saved experiment files:")
 
+print(
+    current_experiment /
+    "experiment_result.txt"
+)
 
-new_row = {
+print(
+    current_experiment /
+    "parameters.json"
+)
 
-    "experiment_id":
-        experiment_id,
-
-    "return_percent":
-        round(
-            return_percent,
-            2
-        ),
-
-    "profit":
-        round(
-            profit,
-            2
-        ),
-
-    "status":
-        "completed",
-
-    "parameters_hash":
-        parameters_hash,
-
-    "commit_sha":
-        commit_sha,
-
-    "timestamp_eat":
-        run_timestamp,
-}
-
-
-existing_rows.append(
-    new_row
+print(
+    current_experiment /
+    "hello.py"
 )
 
 
 # ============================================================
 # STEP 14
-# WRITE CLEAN LEADERBOARD
+# UPDATE LEADERBOARD
 # ============================================================
 
+rows = existing_rows.copy()
+
+
+rows.append(
+    {
+        "experiment_id": experiment_id,
+
+        "return_percent":
+            round(
+                return_percent,
+                2
+            ),
+
+        "profit":
+            round(
+                profit,
+                2
+            ),
+
+        "status":
+            "completed",
+
+        "parameters_hash":
+            parameters_hash,
+
+        "commit_sha":
+            commit_sha,
+
+        "timestamp_eat":
+            run_timestamp,
+    }
+)
+
+
+# ============================================================
+# STEP 15
+# WRITE CLEAN LEADERBOARD
+# ============================================================
 
 with leaderboard_file.open(
     "w",
@@ -577,59 +625,57 @@ with leaderboard_file.open(
 
     writer.writeheader()
 
-    writer.writerows(
-        existing_rows
-    )
-
-
-# ============================================================
-# STEP 15
-# DISPLAY RESULTS
-# ============================================================
+    writer.writerows(rows)
 
 
 print()
+print("Leaderboard updated:")
+print(leaderboard_file)
 
+
+# ============================================================
+# STEP 16
+# FINAL SUMMARY
+# ============================================================
+
+print()
 print("=" * 70)
-
 print("EXPERIMENT COMPLETE")
-
 print("=" * 70)
 
 print()
 
 print(
-    f"Experiment ID: "
-    f"{experiment_id}"
+    f"Experiment ID: {experiment_id}"
 )
 
 print(
-    f"Return: "
-    f"{return_percent}%"
+    f"Return: {return_percent}%"
 )
 
 print(
-    f"Profit: "
-    f"{profit}"
+    f"Profit: {profit}"
 )
 
 print(
-    f"Time: "
-    f"{run_timestamp}"
+    f"Time: {run_timestamp}"
 )
 
 print()
 
 print("Saved:")
-
 print(current_experiment)
 
 print()
 
-print("Leaderboard:")
+print(
+    "The experiment number was generated from "
+    "existing experiment folders."
+)
 
-print(leaderboard_file)
-
-print()
+print(
+    "Previous experiment folders will never be "
+    "reused automatically."
+)
 
 print("=" * 70)
