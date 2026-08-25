@@ -1,38 +1,16 @@
 # ============================================================
-# QUANT RESEARCH AUTOMATION — LEVEL 7
+# QUANT RESEARCH AUTOMATION — LEVEL 8
 # ============================================================
 #
-# GitHub
-#    ↓
-# GitHub Actions
-#    ↓
-# Python experiment
-#    ↓
-# Experiment ID
-#    ↓
-# Result
-#    ↓
-# Leaderboard
-#    ↓
-# Best experiment
+# PURPOSE:
 #
-# AI IS NOT CONNECTED YET.
+# This workflow runs the research experiment and preserves:
 #
-# Later:
-#
-# GitHub Actions
-#       ↓
-# Python / VectorBT
-#       ↓
-# Many experiments
-#       ↓
-# leaderboard.csv
-#       ↓
-# External AI API
-#       ↓
-# AI analysis
-#       ↓
-# Improved parameters
+# 1. Every experiment
+# 2. The exact Python code
+# 3. The parameters
+# 4. The leaderboard
+# 5. The current best experiment
 #
 # ============================================================
 
@@ -41,15 +19,13 @@ name: Quant Research Test
 
 
 # ============================================================
-# WORKFLOW TRIGGERS
+# TRIGGERS
 # ============================================================
 
 on:
 
-  # Run when repository changes
   push:
 
-  # Allow manual execution
   workflow_dispatch:
 
     inputs:
@@ -75,14 +51,7 @@ permissions:
 
 
 # ============================================================
-# CONCURRENCY
-# ============================================================
-#
-# Only one experiment workflow can modify the repository
-# at a time.
-#
-# This protects leaderboard.csv from simultaneous writes.
-#
+# PREVENT TWO EXPERIMENTS RUNNING AT THE SAME TIME
 # ============================================================
 
 concurrency:
@@ -93,7 +62,7 @@ concurrency:
 
 
 # ============================================================
-# JOBS
+# JOB
 # ============================================================
 
 jobs:
@@ -106,20 +75,20 @@ jobs:
     steps:
 
 
-      # ======================================================
+      # ------------------------------------------------------
       # STEP 1
       # GET REPOSITORY
-      # ======================================================
+      # ------------------------------------------------------
 
       - name: Step 1 - Get repository
 
         uses: actions/checkout@v5
 
 
-      # ======================================================
+      # ------------------------------------------------------
       # STEP 2
-      # INSTALL PYTHON
-      # ======================================================
+      # SET UP PYTHON
+      # ------------------------------------------------------
 
       - name: Step 2 - Setup Python
 
@@ -130,10 +99,10 @@ jobs:
           python-version: "3.12"
 
 
-      # ======================================================
+      # ------------------------------------------------------
       # STEP 3
       # RUN EXPERIMENT
-      # ======================================================
+      # ------------------------------------------------------
 
       - name: Step 3 - Run research experiment
 
@@ -146,31 +115,32 @@ jobs:
           python hello.py
 
 
-      # ======================================================
+      # ------------------------------------------------------
       # STEP 4
-      # SHOW EXPERIMENT OUTPUT
-      # ======================================================
+      # DISPLAY EXPERIMENTS
+      # ------------------------------------------------------
 
       - name: Step 4 - Check experiment output
 
         run: |
 
-          echo ""
-          echo "======================================================"
+          echo "=============================================="
+
           echo "EXPERIMENT OUTPUT"
-          echo "======================================================"
+
+          echo "=============================================="
 
           echo ""
 
-          echo "Experiment directories:"
-
-          ls -R experiments || echo "(no new experiment created)"
+          ls -R experiments || echo "No experiment directory created."
 
           echo ""
 
-          echo "======================================================"
+          echo "=============================================="
+
           echo "LEADERBOARD"
-          echo "======================================================"
+
+          echo "=============================================="
 
           if [ -f leaderboard.csv ]; then
 
@@ -178,58 +148,41 @@ jobs:
 
           else
 
-            echo "leaderboard.csv does not exist."
-
-            exit 1
+            echo "leaderboard.csv not found."
 
           fi
 
-
-      # ======================================================
-      # STEP 5
-      # SHOW CURRENT CHAMPION
-      # ======================================================
-
-      - name: Step 5 - Show research champion
-
-        run: |
-
-          echo ""
-          echo "======================================================"
-          echo "CURRENT BEST EXPERIMENT"
-          echo "======================================================"
-
           echo ""
 
-          if [ -f best_experiment.json ]; then
+          echo "=============================================="
 
-            cat best_experiment.json
+          echo "BEST EXPERIMENT"
+
+          echo "=============================================="
+
+          if [ -f best_experiment.txt ]; then
+
+            cat best_experiment.txt
 
           else
 
-            echo "best_experiment.json was not created."
-
-            exit 1
+            echo "best_experiment.txt not found."
 
           fi
 
-          echo ""
 
-          echo "======================================================"
+      # ------------------------------------------------------
+      # STEP 5
+      # SAVE RESEARCH ARTIFACT
+      # ------------------------------------------------------
 
-
-      # ======================================================
-      # STEP 6
-      # SAVE COMPLETE EXPERIMENT ARCHIVE
-      # ======================================================
-
-      - name: Step 6 - Save experiment archive
+      - name: Step 5 - Save research archive
 
         uses: actions/upload-artifact@v4
 
         with:
 
-          name: experiment-history-${{ github.run_id }}
+          name: quant-research-level-8-${{ github.run_id }}
 
           path: |
 
@@ -237,15 +190,15 @@ jobs:
 
             leaderboard.csv
 
-            best_experiment.json
+            best_experiment.txt
 
 
-      # ======================================================
-      # STEP 7
-      # SAVE RESEARCH MEMORY BACK TO GITHUB
-      # ======================================================
+      # ------------------------------------------------------
+      # STEP 6
+      # SAVE LEADERBOARD TO GITHUB
+      # ------------------------------------------------------
 
-      - name: Step 7 - Commit experiment memory
+      - name: Step 6 - Commit experiment memory
 
         run: |
 
@@ -254,33 +207,26 @@ jobs:
           git config --global user.email "github-actions@github.com"
 
 
-          git add leaderboard.csv best_experiment.json
+          git add leaderboard.csv
 
 
           git commit \
-            -m "Update experiment research memory (${{ github.run_id }})" \
-            || echo "No changes to commit"
+            -m "Update experiment leaderboard (${{ github.run_id }})" \
+            || echo "No leaderboard changes to commit"
 
 
-          for attempt in 1 2 3 4 5; do
-
-            git pull --rebase origin "${GITHUB_REF_NAME}" \
-              && git push \
-              && break
-
-            echo "Push attempt $attempt failed, retrying..."
-
-            sleep $((RANDOM % 5 + 1))
-
-          done
+          git pull --rebase origin "${GITHUB_REF_NAME}"
 
 
-      # ======================================================
-      # STEP 8
-      # FINAL SUCCESS MESSAGE
-      # ======================================================
+          git push
 
-      - name: Step 8 - Complete
+
+      # ------------------------------------------------------
+      # STEP 7
+      # FINAL CONFIRMATION
+      # ------------------------------------------------------
+
+      - name: Step 7 - Confirm Level 8 completed
 
         run: |
 
@@ -288,60 +234,36 @@ jobs:
 
           echo "======================================================"
 
-          echo "QUANT RESEARCH LEVEL 7 COMPLETE"
+          echo "LEVEL 8 COMPLETED SUCCESSFULLY"
 
           echo "======================================================"
 
           echo ""
 
-          echo "The system now maintains:"
+          echo "The system has now:"
 
           echo ""
 
-          echo "1. Individual experiment IDs"
+          echo "1. Run an experiment"
 
-          echo "2. Individual experiment folders"
+          echo "2. Assigned an EXP-XXXX ID"
 
-          echo "3. Exact parameters"
+          echo "3. Saved the experiment"
 
-          echo "4. Exact Python code"
+          echo "4. Saved its parameters"
 
-          echo "5. Experiment results"
+          echo "5. Saved its Python code"
 
-          echo "6. Experiment leaderboard"
+          echo "6. Updated the leaderboard"
 
-          echo "7. Current best experiment"
+          echo "7. Examined the experiment history"
 
-          echo ""
+          echo "8. Identified the best experiment"
 
-          echo "AI is intentionally NOT connected yet."
-
-          echo ""
-
-          echo "Future architecture:"
-
-          echo "Python / VectorBT"
-
-          echo "       ↓"
-
-          echo "Many experiments"
-
-          echo "       ↓"
-
-          echo "Leaderboard"
-
-          echo "       ↓"
-
-          echo "External AI API"
-
-          echo "       ↓"
-
-          echo "Research analysis"
-
-          echo "       ↓"
-
-          echo "Improved experiments"
+          echo "9. Saved best_experiment.txt"
 
           echo ""
+
+          echo "This is the foundation for future AI analysis."
 
           echo "======================================================"
