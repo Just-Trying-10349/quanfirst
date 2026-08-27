@@ -1,38 +1,46 @@
 # ============================================================
 # QUANT RESEARCH AUTOMATION — LEVEL 9
-# GitHub → Experiment → Kaggle
 # ============================================================
+#
+# GITHUB → PYTHON → EXPERIMENT → KAGGLE
 #
 # PURPOSE:
 #
-# This level introduces the first connection between our
-# GitHub research system and Kaggle.
+# Level 9 introduces our first controlled connection to Kaggle.
 #
-# Architecture:
+# We are NOT yet asking Kaggle to create a permanent Dataset.
 #
-# GitHub
-#     ↓
-# GitHub Actions
-#     ↓
-# Python experiment
-#     ↓
-# EXP-XXXX
-#     ↓
-# CSV + JSON
-#     ↓
-# GitHub Artifact
-#     ↓
-# Kaggle
+# Instead we prove each layer independently:
 #
-# IMPORTANT:
+#     GitHub
+#        ↓
+#     GitHub Actions
+#        ↓
+#     Python
+#        ↓
+#     Experiment
+#        ↓
+#     Experiment archive
+#        ↓
+#     Kaggle CLI
+#        ↓
+#     Kaggle authentication
+#        ↓
+#     Kaggle-ready research package
 #
-# The experiment itself is considered successful before Kaggle
-# is contacted.
 #
-# This prevents a temporary Kaggle/API problem from destroying
-# our experiment record.
+# This deliberately keeps Level 9 simple.
+#
+# Later:
+#
+# Level 10 → AI analysis
+# Level 11 → AI correction / improvement
+# Level 12 → stronger automation
+# Level 13 → Machine Learning
+# Level 16 → Alpaca API
 #
 # ============================================================
+
 
 name: Quant Research Test
 
@@ -43,8 +51,10 @@ name: Quant Research Test
 
 on:
 
+  # Run automatically when repository changes
   push:
 
+  # Allow manual execution
   workflow_dispatch:
 
     inputs:
@@ -70,7 +80,7 @@ permissions:
 
 
 # ============================================================
-# PREVENT TWO RUNS FROM WRITING AT THE SAME TIME
+# PREVENT SIMULTANEOUS EXPERIMENT WRITES
 # ============================================================
 
 concurrency:
@@ -94,20 +104,20 @@ jobs:
     steps:
 
 
-      # ------------------------------------------------------
+      # ======================================================
       # STEP 1
       # GET REPOSITORY
-      # ------------------------------------------------------
+      # ======================================================
 
       - name: Step 1 - Get repository
 
         uses: actions/checkout@v5
 
 
-      # ------------------------------------------------------
+      # ======================================================
       # STEP 2
       # SET UP PYTHON
-      # ------------------------------------------------------
+      # ======================================================
 
       - name: Step 2 - Setup Python
 
@@ -118,10 +128,10 @@ jobs:
           python-version: "3.12"
 
 
-      # ------------------------------------------------------
+      # ======================================================
       # STEP 3
-      # RUN RESEARCH EXPERIMENT
-      # ------------------------------------------------------
+      # RUN OUR EXPERIMENT
+      # ======================================================
 
       - name: Step 3 - Run research experiment
 
@@ -131,56 +141,74 @@ jobs:
 
         run: |
 
+          echo "=============================================="
+
+          echo "RUNNING QUANT RESEARCH EXPERIMENT"
+
+          echo "=============================================="
+
+          echo ""
+
           python hello.py
 
 
-      # ------------------------------------------------------
+      # ======================================================
       # STEP 4
-      # CHECK EXPERIMENT OUTPUT
-      # ------------------------------------------------------
+      # VERIFY EXPERIMENT
+      # ======================================================
 
       - name: Step 4 - Verify experiment output
 
         run: |
 
           echo "=============================================="
-          echo "VERIFYING EXPERIMENT OUTPUT"
+
+          echo "VERIFYING EXPERIMENT"
+
           echo "=============================================="
 
           echo ""
 
           if [ ! -d "experiments" ]; then
 
-            echo "No experiments directory found."
+            echo "ERROR: experiments directory does not exist."
 
             exit 1
 
           fi
 
-          echo "Experiment directory contents:"
-          echo ""
 
-          find experiments -maxdepth 3 -type f -print
+          echo "Experiment directory exists."
 
           echo ""
 
-          echo "Verification complete."
+          echo "Experiment files:"
+
+          find experiments -type f -print
 
 
-      # ------------------------------------------------------
+          echo ""
+
+          echo "Experiment verification successful."
+
+
+      # ======================================================
       # STEP 5
-      # DISPLAY LEADERBOARD
-      # ------------------------------------------------------
+      # SHOW LEADERBOARD
+      # ======================================================
 
       - name: Step 5 - Show leaderboard
 
         run: |
 
           echo "=============================================="
-          echo "CURRENT LEADERBOARD"
+
+          echo "LEADERBOARD"
+
           echo "=============================================="
 
           echo ""
+
 
           if [ -f leaderboard.csv ]; then
 
@@ -193,10 +221,10 @@ jobs:
           fi
 
 
-      # ------------------------------------------------------
+      # ======================================================
       # STEP 6
-      # SAVE EXPERIMENT AS ARTIFACT
-      # ------------------------------------------------------
+      # SAVE EXPERIMENT ARTIFACT
+      # ======================================================
 
       - name: Step 6 - Save experiment archive
 
@@ -213,190 +241,252 @@ jobs:
             leaderboard.csv
 
 
-      # ------------------------------------------------------
+      # ======================================================
       # STEP 7
       # INSTALL KAGGLE CLI
-      # ------------------------------------------------------
-      #
-      # Kaggle's current API provides a CLI for programmatic
-      # dataset interaction.
-      #
-      # ------------------------------------------------------
+      # ======================================================
 
       - name: Step 7 - Install Kaggle CLI
 
         run: |
+
+          echo "=============================================="
+
+          echo "INSTALLING KAGGLE CLI"
+
+          echo "=============================================="
+
+          echo ""
 
           python -m pip install --upgrade pip
 
           pip install kaggle
 
 
-      # ------------------------------------------------------
+          echo ""
+
+          echo "Kaggle CLI version:"
+
+          kaggle --version
+
+
+      # ======================================================
       # STEP 8
-      # CHECK KAGGLE CREDENTIALS
-      # ------------------------------------------------------
+      # CHECK KAGGLE TOKEN
+      # ======================================================
       #
-      # We deliberately do NOT print the secret itself.
+      # We never print the actual secret.
       #
-      # We only verify that the required GitHub Secrets exist.
+      # We only check that GitHub supplied it.
       #
-      # Expected secrets:
-      #
-      # KAGGLE_USERNAME
-      # KAGGLE_KEY
-      #
-      # ------------------------------------------------------
+      # ======================================================
 
-      - name: Step 8 - Check Kaggle credentials
+      - name: Step 8 - Check Kaggle authentication
 
         env:
 
-          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
-
-          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
 
         run: |
 
           echo "=============================================="
-          echo "CHECKING KAGGLE CONNECTION SETTINGS"
+
+          echo "CHECKING KAGGLE AUTHENTICATION"
+
           echo "=============================================="
 
           echo ""
 
-          if [ -z "$KAGGLE_USERNAME" ]; then
 
-            echo "ERROR: KAGGLE_USERNAME secret is missing."
+          if [ -z "$KAGGLE_API_TOKEN" ]; then
+
+            echo "ERROR: KAGGLE_API_TOKEN is missing."
+
+            echo ""
+
+            echo "Create a GitHub repository secret named:"
+
+            echo "KAGGLE_API_TOKEN"
 
             exit 1
 
           fi
 
-          if [ -z "$KAGGLE_KEY" ]; then
 
-            echo "ERROR: KAGGLE_KEY secret is missing."
+          echo "KAGGLE_API_TOKEN is present."
 
-            exit 1
-
-          fi
-
-          echo "Kaggle credentials are present."
-
-          echo "Username:"
-          echo "$KAGGLE_USERNAME"
+          echo "Secret successfully supplied to GitHub Actions."
 
 
-      # ------------------------------------------------------
+      # ======================================================
       # STEP 9
-      # TEST KAGGLE API
-      # ------------------------------------------------------
-      #
-      # We test authentication separately from uploading.
-      #
-      # This makes the system easier to understand and debug.
-      #
-      # ------------------------------------------------------
+      # TEST KAGGLE AUTHENTICATION
+      # ======================================================
 
-      - name: Step 9 - Test Kaggle API
+      - name: Step 9 - Test Kaggle API connection
 
         env:
 
-          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
-
-          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
 
         run: |
 
           echo "=============================================="
-          echo "TESTING KAGGLE API"
+
+          echo "TESTING KAGGLE API CONNECTION"
+
           echo "=============================================="
 
           echo ""
 
-          kaggle datasets list --max-size 1
 
-          echo ""
-
-          echo "Kaggle API connection successful."
+          kaggle auth print-access-token > /tmp/kaggle_test_token.txt
 
 
-      # ------------------------------------------------------
+          if [ ! -s /tmp/kaggle_test_token.txt ]; then
+
+            echo "ERROR: Kaggle authentication test failed."
+
+            exit 1
+
+          fi
+
+
+          echo "Kaggle authentication successful."
+
+
+          # Delete the temporary token immediately.
+
+          rm -f /tmp/kaggle_test_token.txt
+
+
+      # ======================================================
       # STEP 10
-      # PREPARE KAGGLE DATA
-      # ------------------------------------------------------
+      # PREPARE KAGGLE RESEARCH PACKAGE
+      # ======================================================
 
-      - name: Step 10 - Prepare Kaggle experiment data
+      - name: Step 10 - Prepare Kaggle research package
 
         run: |
 
           echo "=============================================="
-          echo "PREPARING KAGGLE DATA"
+
+          echo "PREPARING KAGGLE RESEARCH PACKAGE"
+
           echo "=============================================="
+
+          echo ""
+
+
+          rm -rf kaggle_upload
 
           mkdir -p kaggle_upload
 
+
+          echo "Copying experiment data..."
+
+
+          cp -r experiments/. kaggle_upload/
+
+
           echo ""
 
-          echo "Copying experiment files..."
 
-          cp -r experiments/* kaggle_upload/
+          echo "Copying leaderboard..."
+
+
+          if [ -f leaderboard.csv ]; then
+
+            cp leaderboard.csv kaggle_upload/
+
+          fi
+
 
           echo ""
 
-          echo "Files prepared for Kaggle:"
+          echo "Kaggle package contents:"
 
           find kaggle_upload -type f -print
 
 
-      # ------------------------------------------------------
+      # ======================================================
       # STEP 11
-      # SAVE KAGGLE DATA AS ARTIFACT
-      # ------------------------------------------------------
+      # SAVE KAGGLE PACKAGE AS GITHUB ARTIFACT
+      # ======================================================
       #
-      # This is an additional safety layer.
+      # This gives us a safety copy.
       #
-      # Even if Kaggle upload fails, the files remain available
-      # from GitHub Actions.
+      # Even if Kaggle later has a problem, our research
+      # package is still available from GitHub Actions.
       #
-      # ------------------------------------------------------
+      # ======================================================
 
-      - name: Step 11 - Archive Kaggle package
+      - name: Step 11 - Save Kaggle research package
 
         uses: actions/upload-artifact@v4
 
         with:
 
-          name: kaggle-research-data-${{ github.run_id }}
+          name: kaggle-research-package-${{ github.run_id }}
 
           path: kaggle_upload/
 
 
-      # ------------------------------------------------------
+      # ======================================================
       # STEP 12
-      # KAGGLE CONNECTION CONFIRMATION
-      # ------------------------------------------------------
-      #
-      # At Level 9 we deliberately stop here.
-      #
-      # We have now proven:
-      #
-      # GitHub
-      #   ↓
-      # Python
-      #   ↓
-      # Experiment
-      #   ↓
-      # Kaggle-ready data
-      #   ↓
-      # Kaggle API authentication
-      #
-      # Actual automated dataset creation/versioning will be
-      # expanded carefully in the next stage rather than hiding
-      # several new mechanisms inside Level 9.
-      #
-      # ------------------------------------------------------
+      # COMMIT LEADERBOARD
+      # ======================================================
 
-      - name: Step 12 - Confirm Level 9 connection
+      - name: Step 12 - Save experiment memory
+
+        run: |
+
+          echo "=============================================="
+
+          echo "SAVING EXPERIMENT MEMORY"
+
+          echo "=============================================="
+
+          echo ""
+
+
+          git config --global user.name "github-actions"
+
+          git config --global user.email "github-actions@github.com"
+
+
+          git add leaderboard.csv
+
+
+          git commit \
+            -m "Update experiment leaderboard (${{ github.run_id }})" \
+            || echo "No leaderboard changes to commit."
+
+
+          for attempt in 1 2 3 4 5
+
+          do
+
+            git pull --rebase origin "${GITHUB_REF_NAME}" \
+              && git push \
+              && break
+
+
+            echo "Push attempt $attempt failed."
+
+            echo "Retrying..."
+
+            sleep $((RANDOM % 5 + 1))
+
+          done
+
+
+      # ======================================================
+      # STEP 13
+      # FINAL LEVEL 9 CONFIRMATION
+      # ======================================================
+
+      - name: Step 13 - Level 9 complete
 
         run: |
 
@@ -404,27 +494,37 @@ jobs:
 
           echo "======================================================"
 
-          echo "LEVEL 9 COMPLETED"
+          echo "LEVEL 9 COMPLETED SUCCESSFULLY"
 
           echo "======================================================"
 
           echo ""
 
-          echo "GitHub experiment: SUCCESS"
+          echo "GitHub repository:       SUCCESS"
 
-          echo "Experiment archive: SUCCESS"
+          echo "Python environment:     SUCCESS"
 
-          echo "Kaggle CLI: INSTALLED"
+          echo "Research experiment:    SUCCESS"
 
-          echo "Kaggle credentials: FOUND"
+          echo "Experiment verification: SUCCESS"
 
-          echo "Kaggle API connection: SUCCESS"
+          echo "GitHub artifact:         SUCCESS"
 
-          echo "Kaggle research package: PREPARED"
+          echo "Kaggle CLI:              SUCCESS"
+
+          echo "Kaggle authentication:   SUCCESS"
+
+          echo "Kaggle package:          SUCCESS"
 
           echo ""
 
-          echo "The experiment is ready for the next Kaggle stage."
+          echo "The research system is now connected to Kaggle."
+
+          echo ""
+
+          echo "NEXT STAGE:"
+
+          echo "Level 10 → AI reads and analyzes our research."
 
           echo ""
 
