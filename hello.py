@@ -1,44 +1,49 @@
 # ============================================================
-# QUANT RESEARCH AUTOMATION — LEVEL 8
+# QUANT RESEARCH AUTOMATION — LEVEL 9
 # ============================================================
 #
 # PURPOSE:
 #
-# Level 8 teaches the system to examine its own experiment
-# history and identify the best experiment found so far.
+# Prepare experiment results for the GitHub → Kaggle pipeline.
 #
-# CURRENT ARCHITECTURE:
+# This version preserves:
+#
+# 1. EXP-0001, EXP-0002, EXP-0003 style IDs
+# 2. Net return in the experiment filename
+# 3. East Africa Time (UTC+3)
+# 4. Parameters
+# 5. Exact Python source code
+# 6. Experiment result
+# 7. Leaderboard history
+# 8. Duplicate protection
+# 9. Git commit information
+# 10. Kaggle transfer files
+#
+# CURRENT FLOW:
 #
 # parameters.json
-#        |
-#        v
+#        ↓
 # hello.py
-#        |
-#        v
-# EXP-0001 / EXP-0002 / ...
-#        |
-#        v
-# leaderboard.csv
-#        |
-#        v
-# FIND BEST EXPERIMENT
-#        |
-#        v
-# best_experiment.txt
-#
+#        ↓
+# experiment
+#        ↓
+# result + parameters + code
+#        ↓
+# leaderboard
+#        ↓
+# Kaggle transfer package
 #
 # FUTURE:
 #
-# leaderboard.csv
-#        |
-#        v
+# GitHub
+#    ↓
+# Kaggle
+#    ↓
+# heavy backtesting
+#    ↓
 # AI analysis
-#        |
-#        v
-# improved parameters
-#        |
-#        v
-# new experiment
+#    ↓
+# strategy improvement
 #
 # ============================================================
 
@@ -50,11 +55,12 @@ import os
 import shutil
 
 from datetime import datetime, timezone, timedelta
+
 from pathlib import Path
 
 
 print("=" * 70)
-print("QUANT RESEARCH EXPERIMENT — LEVEL 8")
+print("QUANT RESEARCH EXPERIMENT — LEVEL 9")
 print("=" * 70)
 
 
@@ -66,13 +72,18 @@ print("=" * 70)
 parameters_file = Path("parameters.json")
 
 
-with parameters_file.open("r", encoding="utf-8") as file:
+with parameters_file.open(
+    "r",
+    encoding="utf-8"
+) as file:
+
     parameters = json.load(file)
 
 
-# Create a fingerprint of the parameters.
+# Create a hash of the parameters.
 #
-# This allows us to recognize whether the parameters changed.
+# This lets the system recognize whether the parameters
+# are identical to the previous experiment.
 
 parameters_hash = hashlib.sha256(
     json.dumps(
@@ -84,27 +95,31 @@ parameters_hash = hashlib.sha256(
 
 # ============================================================
 # STEP 2
-# LEADERBOARD SETTINGS
+# TIME INFORMATION
 # ============================================================
 
-leaderboard_file = Path("leaderboard.csv")
+utc_now = datetime.now(timezone.utc)
 
+east_africa_time = utc_now + timedelta(hours=3)
 
-FIELDNAMES = [
-    "experiment_id",
-    "return_percent",
-    "profit",
-    "status",
-    "parameters_hash",
-    "commit_sha",
-    "timestamp_utc",
-]
+timestamp_utc = utc_now.strftime(
+    "%Y-%m-%dT%H:%M:%SZ"
+)
+
+timestamp_eat = east_africa_time.strftime(
+    "%Y-%m-%dT%H:%M:%S+03:00"
+)
 
 
 # ============================================================
 # STEP 3
-# READ EXISTING EXPERIMENT HISTORY
+# READ EXISTING LEADERBOARD
 # ============================================================
+
+leaderboard_file = Path(
+    "leaderboard.csv"
+)
+
 
 existing_rows = []
 
@@ -127,17 +142,24 @@ if leaderboard_file.exists():
 
 
 print()
-print("Previous experiments found:")
-print(len(existing_rows))
+
+print(
+    "Previous experiments found:"
+)
+
+print(
+    len(existing_rows)
+)
 
 
 # ============================================================
 # STEP 4
-# PREVENT UNINTENTIONAL DUPLICATES
+# PREVENT DUPLICATE PARAMETERS
 # ============================================================
 
 force_rerun = (
-    os.environ.get(
+    os.environ
+    .get(
         "FORCE_RERUN",
         "false"
     )
@@ -155,7 +177,9 @@ last_row = (
 
 
 last_hash = (
-    last_row.get("parameters_hash")
+    last_row.get(
+        "parameters_hash"
+    )
     if last_row
     else None
 )
@@ -167,24 +191,23 @@ if (
 ):
 
     print()
+
     print(
-        "The parameters have not changed since the"
+        "The parameters are identical "
+        "to the previous experiment."
     )
-
-    if last_row:
-
-        print(
-            f"last experiment ({last_row['experiment_id']})."
-        )
 
     print()
-    print(
-        "Skipping this run to prevent an accidental duplicate."
-    )
 
     print(
-        "Use FORCE_RERUN=true when you deliberately want"
-        " to repeat the experiment."
+        "No duplicate experiment will be created."
+    )
+
+    print()
+
+    print(
+        "Use FORCE_RERUN=true if you "
+        "deliberately want to run it again."
     )
 
     raise SystemExit(0)
@@ -192,27 +215,21 @@ if (
 
 # ============================================================
 # STEP 5
-# CREATE UNIQUE EXPERIMENT ID
+# CREATE EXPERIMENT ID
 # ============================================================
 #
-# We intentionally return to the simple EXP-0001 style.
+# We deliberately use:
 #
-# The ID is based on the existing experiment directories
-# and leaderboard history.
+# EXP-0001
+# EXP-0002
+# EXP-0003
+#
+# rather than GitHub's very long run ID.
 #
 # ============================================================
-
-experiment_folder = Path("experiments")
-
-experiment_folder.mkdir(
-    exist_ok=True
-)
-
 
 highest_id = 0
 
-
-# Check leaderboard history.
 
 for row in existing_rows:
 
@@ -221,7 +238,9 @@ for row in existing_rows:
         ""
     )
 
-    if experiment_id_value.startswith("EXP-"):
+    if experiment_id_value.startswith(
+        "EXP-"
+    ):
 
         try:
 
@@ -232,48 +251,18 @@ for row in existing_rows:
                 )
             )
 
-            highest_id = max(
-                highest_id,
-                number
-            )
+            if number > highest_id:
+
+                highest_id = number
 
         except ValueError:
 
             pass
 
 
-# Also check actual experiment folders.
-#
-# This protects us if the leaderboard was manually edited.
-
-for folder in experiment_folder.iterdir():
-
-    if folder.is_dir():
-
-        folder_name = folder.name
-
-        if folder_name.startswith("EXP-"):
-
-            try:
-
-                number = int(
-                    folder_name.replace(
-                        "EXP-",
-                        ""
-                    )
-                )
-
-                highest_id = max(
-                    highest_id,
-                    number
-                )
-
-            except ValueError:
-
-                pass
-
-
-experiment_number = highest_id + 1
+experiment_number = (
+    highest_id + 1
+)
 
 
 experiment_id = (
@@ -281,9 +270,16 @@ experiment_id = (
 )
 
 
+print()
+
+print("Experiment ID:")
+
+print(experiment_id)
+
+
 # ============================================================
 # STEP 6
-# CREATE TIMESTAMP
+# GITHUB INFORMATION
 # ============================================================
 
 commit_sha = os.environ.get(
@@ -292,41 +288,24 @@ commit_sha = os.environ.get(
 )
 
 
-utc_now = datetime.now(
-    timezone.utc
-)
-
-
-east_africa_time = (
-    utc_now
-    + timedelta(hours=3)
-)
-
-
-timestamp_utc = utc_now.strftime(
-    "%Y-%m-%dT%H:%M:%SZ"
-)
-
-
-timestamp_eat = east_africa_time.strftime(
-    "%Y-%m-%dT%H:%M:%S+03:00"
-)
-
-
 print()
-print("Experiment ID:")
-print(experiment_id)
 
-print()
 print("Commit SHA:")
+
 print(commit_sha)
 
-print()
-print("UTC:")
-print(timestamp_utc)
 
 print()
+
+print("UTC:")
+
+print(timestamp_utc)
+
+
+print()
+
 print("East Africa Time:")
+
 print(timestamp_eat)
 
 
@@ -335,25 +314,40 @@ print(timestamp_eat)
 # CREATE EXPERIMENT DIRECTORY
 # ============================================================
 
+experiment_folder = Path(
+    "experiments"
+)
+
+
+experiment_folder.mkdir(
+    exist_ok=True
+)
+
+
 current_experiment = (
     experiment_folder /
     experiment_id
 )
 
 
+# exist_ok=True prevents the workflow
+# from crashing if the directory already exists.
+
 current_experiment.mkdir(
-    exist_ok=False
+    exist_ok=True
 )
 
 
 print()
+
 print("Experiment directory:")
+
 print(current_experiment)
 
 
 # ============================================================
 # STEP 8
-# RUN THE CURRENT EXPERIMENT
+# RUN EXPERIMENT
 # ============================================================
 
 capital = parameters[
@@ -367,25 +361,27 @@ strategy_return = parameters[
 
 
 ending_capital = (
-    capital
-    * (1 + strategy_return)
+    capital *
+    (1 + strategy_return)
 )
 
 
 profit = (
-    ending_capital
-    - capital
+    ending_capital -
+    capital
 )
 
 
 return_percent = (
-    profit
-    / capital
+    profit /
+    capital
 ) * 100
 
 
 print()
+
 print("RESULT")
+
 print("-" * 70)
 
 print(
@@ -407,12 +403,47 @@ print(
 
 # ============================================================
 # STEP 9
-# SAVE COMPLETE EXPERIMENT REPORT
+# CREATE NET-RETURN FILENAME
+# ============================================================
+
+# Example:
+#
+# EXP-0009_10.0.csv
+# EXP-0009_10.0.json
+#
+# This gives us both:
+#
+# unique experiment ID
+# +
+# easily visible return
+#
+# ============================================================
+
+net_return_string = (
+    f"{return_percent:.2f}"
+)
+
+
+csv_filename = (
+    f"{experiment_id}_"
+    f"{net_return_string}.csv"
+)
+
+
+json_filename = (
+    f"{experiment_id}_"
+    f"{net_return_string}.json"
+)
+
+
+# ============================================================
+# STEP 10
+# SAVE EXPERIMENT RESULT
 # ============================================================
 
 result_file = (
-    current_experiment
-    / "experiment_result.txt"
+    current_experiment /
+    "experiment_result.txt"
 )
 
 
@@ -426,35 +457,37 @@ with result_file.open(
     )
 
     file.write(
-        "=" * 70
-        + "\n"
+        "=" * 70 +
+        "\n"
     )
 
     file.write(
-        f"Experiment ID: {experiment_id}\n"
+        f"Experiment ID: "
+        f"{experiment_id}\n"
     )
 
     file.write(
-        f"Commit SHA: {commit_sha}\n"
+        f"Commit SHA: "
+        f"{commit_sha}\n"
     )
 
     file.write(
-        f"Timestamp UTC: {timestamp_utc}\n"
+        f"UTC: "
+        f"{timestamp_utc}\n"
     )
 
     file.write(
-        f"Timestamp East Africa: {timestamp_eat}\n"
+        f"East Africa Time: "
+        f"{timestamp_eat}\n\n"
     )
-
-    file.write("\n")
 
     file.write(
         "PARAMETERS\n"
     )
 
     file.write(
-        "-" * 70
-        + "\n"
+        "-" * 70 +
+        "\n"
     )
 
     for key, value in parameters.items():
@@ -463,37 +496,39 @@ with result_file.open(
             f"{key}: {value}\n"
         )
 
-    file.write("\n")
-
     file.write(
-        "RESULTS\n"
+        "\nRESULTS\n"
     )
 
     file.write(
-        "-" * 70
-        + "\n"
+        "-" * 70 +
+        "\n"
     )
 
     file.write(
-        f"Starting capital: {capital}\n"
+        f"Starting capital: "
+        f"{capital}\n"
     )
 
     file.write(
-        f"Ending capital: {ending_capital}\n"
+        f"Ending capital: "
+        f"{ending_capital}\n"
     )
 
     file.write(
-        f"Profit: {profit}\n"
+        f"Profit: "
+        f"{profit}\n"
     )
 
     file.write(
-        f"Return: {return_percent}%\n"
+        f"Return: "
+        f"{return_percent}%\n"
     )
 
 
 # ============================================================
-# STEP 10
-# PRESERVE THE CODE AND PARAMETERS
+# STEP 11
+# COPY CODE AND PARAMETERS
 # ============================================================
 
 shutil.copy(
@@ -511,44 +546,203 @@ shutil.copy(
 
 
 # ============================================================
-# STEP 11
-# ADD EXPERIMENT TO LEADERBOARD
+# STEP 12
+# CREATE KAGGLE TRANSFER DIRECTORY
 # ============================================================
 
-rows = list(existing_rows)
+kaggle_folder = Path(
+    "kaggle_transfer"
+)
 
 
-rows.append(
-    {
-        "experiment_id": experiment_id,
-
-        "return_percent": round(
-            return_percent,
-            2
-        ),
-
-        "profit": round(
-            profit,
-            2
-        ),
-
-        "status": "completed",
-
-        "parameters_hash":
-            parameters_hash,
-
-        "commit_sha":
-            commit_sha,
-
-        "timestamp_utc":
-            timestamp_utc,
-    }
+kaggle_folder.mkdir(
+    exist_ok=True
 )
 
 
 # ============================================================
-# STEP 12
-# REWRITE CLEAN LEADERBOARD
+# STEP 13
+# CREATE CSV FOR KAGGLE
+# ============================================================
+
+transfer_csv = (
+    kaggle_folder /
+    csv_filename
+)
+
+
+with transfer_csv.open(
+    "w",
+    newline="",
+    encoding="utf-8"
+) as file:
+
+    writer = csv.writer(file)
+
+    writer.writerow(
+        [
+            "experiment_id",
+            "return_percent",
+            "profit",
+            "status",
+            "parameters_hash",
+            "commit_sha",
+            "timestamp_utc",
+            "timestamp_eat"
+        ]
+    )
+
+    writer.writerow(
+        [
+            experiment_id,
+            round(return_percent, 2),
+            round(profit, 2),
+            "completed",
+            parameters_hash,
+            commit_sha,
+            timestamp_utc,
+            timestamp_eat
+        ]
+    )
+
+
+# ============================================================
+# STEP 14
+# CREATE JSON FOR KAGGLE
+# ============================================================
+
+transfer_json = (
+    kaggle_folder /
+    json_filename
+)
+
+
+kaggle_record = {
+
+    "experiment_id":
+        experiment_id,
+
+    "return_percent":
+        round(return_percent, 2),
+
+    "profit":
+        round(profit, 2),
+
+    "status":
+        "completed",
+
+    "parameters":
+        parameters,
+
+    "parameters_hash":
+        parameters_hash,
+
+    "commit_sha":
+        commit_sha,
+
+    "timestamp_utc":
+        timestamp_utc,
+
+    "timestamp_eat":
+        timestamp_eat
+}
+
+
+with transfer_json.open(
+    "w",
+    encoding="utf-8"
+) as file:
+
+    json.dump(
+        kaggle_record,
+        file,
+        indent=4
+    )
+
+
+# ============================================================
+# STEP 15
+# UPDATE LEADERBOARD
+# ============================================================
+
+# IMPORTANT:
+#
+# This field list includes timestamp_eat.
+#
+# This is the exact problem that caused your
+# previous ValueError.
+#
+# ============================================================
+
+FIELDNAMES = [
+
+    "experiment_id",
+
+    "return_percent",
+
+    "profit",
+
+    "status",
+
+    "parameters_hash",
+
+    "commit_sha",
+
+    "timestamp_utc",
+
+    "timestamp_eat"
+
+]
+
+
+new_row = {
+
+    "experiment_id":
+        experiment_id,
+
+    "return_percent":
+        round(return_percent, 2),
+
+    "profit":
+        round(profit, 2),
+
+    "status":
+        "completed",
+
+    "parameters_hash":
+        parameters_hash,
+
+    "commit_sha":
+        commit_sha,
+
+    "timestamp_utc":
+        timestamp_utc,
+
+    "timestamp_eat":
+        timestamp_eat
+
+}
+
+
+existing_ids = {
+
+    row.get(
+        "experiment_id"
+    )
+    for row in existing_rows
+
+}
+
+
+if experiment_id not in existing_ids:
+
+    existing_rows.append(
+        new_row
+    )
+
+
+# ============================================================
+# WRITE CLEAN LEADERBOARD
 # ============================================================
 
 with leaderboard_file.open(
@@ -559,185 +753,77 @@ with leaderboard_file.open(
 
     writer = csv.DictWriter(
         file,
-        fieldnames=FIELDNAMES
+        fieldnames=FIELDNAMES,
+        extrasaction="ignore"
     )
 
     writer.writeheader()
 
-    writer.writerows(rows)
+    writer.writerows(
+        existing_rows
+    )
 
+
+# ============================================================
+# STEP 16
+# FINAL OUTPUT
+# ============================================================
 
 print()
-print("Leaderboard updated.")
 
+print("=" * 70)
 
-# ============================================================
-# STEP 13
-# FIND THE BEST EXPERIMENT
-# ============================================================
-#
-# THIS IS THE IMPORTANT NEW LEVEL 8 FEATURE.
-#
-# We now ask:
-#
-# "Among all completed experiments, which has the
-# highest return?"
-#
-# ============================================================
-
-completed_rows = []
-
-
-for row in rows:
-
-    if row.get("status") != "completed":
-
-        continue
-
-    try:
-
-        row_return = float(
-            row["return_percent"]
-        )
-
-        completed_rows.append(
-            (row_return, row)
-        )
-
-    except (
-        ValueError,
-        TypeError
-    ):
-
-        continue
-
-
-best_experiment_file = Path(
-    "best_experiment.txt"
+print(
+    "EXPERIMENT COMPLETE"
 )
 
-
-if completed_rows:
-
-    # Highest return wins.
-
-    best_return, best_row = max(
-        completed_rows,
-        key=lambda item: item[0]
-    )
-
-
-    best_id = best_row[
-        "experiment_id"
-    ]
-
-    best_profit = best_row[
-        "profit"
-    ]
-
-
-    print()
-    print("=" * 70)
-    print("CURRENT BEST EXPERIMENT")
-    print("=" * 70)
-
-    print()
-    print(
-        f"Experiment: {best_id}"
-    )
-
-    print(
-        f"Return: {best_return}%"
-    )
-
-    print(
-        f"Profit: {best_profit}"
-    )
-
-
-    # --------------------------------------------------------
-    # SAVE BEST EXPERIMENT REPORT
-    # --------------------------------------------------------
-
-    with best_experiment_file.open(
-        "w",
-        encoding="utf-8"
-    ) as file:
-
-        file.write(
-            "CURRENT BEST EXPERIMENT\n"
-        )
-
-        file.write(
-            "=" * 70
-            + "\n\n"
-        )
-
-        file.write(
-            f"Experiment ID: {best_id}\n"
-        )
-
-        file.write(
-            f"Return: {best_return}%\n"
-        )
-
-        file.write(
-            f"Profit: {best_profit}\n"
-        )
-
-        file.write(
-            f"Status: {best_row['status']}\n"
-        )
-
-        file.write(
-            f"Parameters hash: "
-            f"{best_row.get('parameters_hash', '')}\n"
-        )
-
-        file.write(
-            f"Commit SHA: "
-            f"{best_row.get('commit_sha', '')}\n"
-        )
-
-        file.write(
-            f"Timestamp UTC: "
-            f"{best_row.get('timestamp_utc', '')}\n"
-        )
-
-        file.write("\n")
-
-        file.write(
-            "This experiment currently has the highest"
-            " recorded return in the leaderboard.\n"
-        )
-
-
-else:
-
-    print()
-    print(
-        "No completed experiments were found."
-    )
-
-
-# ============================================================
-# STEP 14
-# FINISH
-# ============================================================
-
-print()
-print("=" * 70)
-print("LEVEL 8 EXPERIMENT COMPLETE")
 print("=" * 70)
 
 print()
-print("Saved experiment:")
-print(current_experiment)
+
+print(
+    "Saved experiment:"
+)
+
+print(
+    current_experiment
+)
 
 print()
-print("Leaderboard:")
-print(leaderboard_file)
+
+print(
+    "Kaggle CSV:"
+)
+
+print(
+    transfer_csv
+)
 
 print()
-print("Best experiment report:")
-print(best_experiment_file)
+
+print(
+    "Kaggle JSON:"
+)
+
+print(
+    transfer_json
+)
+
+print()
+
+print(
+    "Leaderboard:"
+)
+
+print(
+    leaderboard_file
+)
+
+print()
+
+print(
+    "Level 9 GitHub → Kaggle "
+    "transfer package prepared successfully."
+)
+
+print("=" * 70)
