@@ -1,16 +1,20 @@
 # ============================================================
-# QUANT RESEARCH AUTOMATION — LEVEL 8
+# QUANT RESEARCH AUTOMATION — LEVEL 9
+# GITHUB → KAGGLE
 # ============================================================
 #
 # PURPOSE:
 #
-# This workflow runs the research experiment and preserves:
+# This workflow:
 #
-# 1. Every experiment
-# 2. The exact Python code
-# 3. The parameters
-# 4. The leaderboard
-# 5. The current best experiment
+# 1. Gets our GitHub repository
+# 2. Installs Python
+# 3. Verifies our existing experiment system
+# 4. Installs the Kaggle CLI
+# 5. Authenticates with Kaggle
+# 6. Sends our Level 9 experiment to Kaggle
+# 7. Tells Kaggle to run it
+# 8. Checks the Kaggle job
 #
 # ============================================================
 
@@ -19,7 +23,7 @@ name: Quant Research Test
 
 
 # ============================================================
-# TRIGGERS
+# WORKFLOW TRIGGERS
 # ============================================================
 
 on:
@@ -27,18 +31,6 @@ on:
   push:
 
   workflow_dispatch:
-
-    inputs:
-
-      force_rerun:
-
-        description: "Run even if parameters.json has not changed"
-
-        required: false
-
-        type: boolean
-
-        default: false
 
 
 # ============================================================
@@ -51,7 +43,7 @@ permissions:
 
 
 # ============================================================
-# PREVENT TWO EXPERIMENTS RUNNING AT THE SAME TIME
+# PREVENT SIMULTANEOUS RUNS
 # ============================================================
 
 concurrency:
@@ -101,14 +93,14 @@ jobs:
 
       # ------------------------------------------------------
       # STEP 3
-      # RUN EXPERIMENT
+      # RUN OUR EXISTING LOCAL EXPERIMENT
       # ------------------------------------------------------
 
-      - name: Step 3 - Run research experiment
+      - name: Step 3 - Run local experiment
 
         env:
 
-          FORCE_RERUN: ${{ github.event.inputs.force_rerun || 'false' }}
+          FORCE_RERUN: "true"
 
         run: |
 
@@ -117,116 +109,167 @@ jobs:
 
       # ------------------------------------------------------
       # STEP 4
-      # DISPLAY EXPERIMENTS
+      # SHOW OUR EXISTING EXPERIMENT
       # ------------------------------------------------------
 
-      - name: Step 4 - Check experiment output
+      - name: Step 4 - Show experiment output
 
         run: |
 
-          echo "=============================================="
+          echo "======================================"
 
-          echo "EXPERIMENT OUTPUT"
+          echo "CURRENT GITHUB EXPERIMENT"
 
-          echo "=============================================="
-
-          echo ""
-
-          ls -R experiments || echo "No experiment directory created."
+          echo "======================================"
 
           echo ""
 
-          echo "=============================================="
-
-          echo "LEADERBOARD"
-
-          echo "=============================================="
-
-          if [ -f leaderboard.csv ]; then
-
-            cat leaderboard.csv
-
-          else
-
-            echo "leaderboard.csv not found."
-
-          fi
-
-          echo ""
-
-          echo "=============================================="
-
-          echo "BEST EXPERIMENT"
-
-          echo "=============================================="
-
-          if [ -f best_experiment.txt ]; then
-
-            cat best_experiment.txt
-
-          else
-
-            echo "best_experiment.txt not found."
-
-          fi
+          ls -R experiments || true
 
 
       # ------------------------------------------------------
       # STEP 5
-      # SAVE RESEARCH ARTIFACT
+      # INSTALL KAGGLE CLI
       # ------------------------------------------------------
 
-      - name: Step 5 - Save research archive
+      - name: Step 5 - Install Kaggle CLI
+
+        run: |
+
+          python -m pip install --upgrade pip
+
+          pip install kaggle
+
+
+      # ------------------------------------------------------
+      # STEP 6
+      # VERIFY KAGGLE CLI
+      # ------------------------------------------------------
+
+      - name: Step 6 - Verify Kaggle CLI
+
+        run: |
+
+          kaggle --help
+
+
+      # ------------------------------------------------------
+      # STEP 7
+      # PREPARE KAGGLE EXPERIMENT
+      # ------------------------------------------------------
+
+      - name: Step 7 - Prepare Kaggle experiment
+
+        run: |
+
+          mkdir -p kaggle/level9/run
+
+          cp kaggle/level9/level9_kaggle.py \
+             kaggle/level9/run/level9_kaggle.py
+
+          cp parameters.json \
+             kaggle/level9/run/parameters.json
+
+          cp kaggle/level9/kernel-metadata.json \
+             kaggle/level9/run/kernel-metadata.json
+
+          echo "======================================"
+
+          echo "KAGGLE EXPERIMENT"
+
+          echo "======================================"
+
+          echo ""
+
+          ls -R kaggle/level9/run
+
+
+      # ------------------------------------------------------
+      # STEP 8
+      # AUTHENTICATE WITH KAGGLE
+      # ------------------------------------------------------
+
+      - name: Step 8 - Authenticate with Kaggle
+
+        env:
+
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+
+        run: |
+
+          kaggle auth status
+
+
+      # ------------------------------------------------------
+      # STEP 9
+      # PUSH AND RUN KAGGLE EXPERIMENT
+      # ------------------------------------------------------
+
+      - name: Step 9 - Send experiment to Kaggle
+
+        env:
+
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+
+        run: |
+
+          kaggle kernels push \
+            -p kaggle/level9/run
+
+
+      # ------------------------------------------------------
+      # STEP 10
+      # CHECK KAGGLE STATUS
+      # ------------------------------------------------------
+
+      - name: Step 10 - Check Kaggle status
+
+        env:
+
+          KAGGLE_API_TOKEN: ${{ secrets.KAGGLE_API_TOKEN }}
+
+        run: |
+
+          echo "======================================"
+
+          echo "KAGGLE JOB STATUS"
+
+          echo "======================================"
+
+          kaggle kernels status \
+            YOUR_KAGGLE_USERNAME/quanfirst-level9
+
+
+      # ------------------------------------------------------
+      # STEP 11
+      # SAVE GITHUB ARTIFACT
+      # ------------------------------------------------------
+
+      - name: Step 11 - Save Level 9 files
 
         uses: actions/upload-artifact@v4
 
         with:
 
-          name: quant-research-level-8-${{ github.run_id }}
+          name: level9-github-kaggle-test
 
           path: |
 
+            parameters.json
+
+            kaggle/level9/level9_kaggle.py
+
+            kaggle/level9/kernel-metadata.json
+
             experiments/
 
-            leaderboard.csv
-
-            best_experiment.txt
-
 
       # ------------------------------------------------------
-      # STEP 6
-      # SAVE LEADERBOARD TO GITHUB
+      # STEP 12
+      # FINAL MESSAGE
       # ------------------------------------------------------
 
-      - name: Step 6 - Commit experiment memory
-
-        run: |
-
-          git config --global user.name "github-actions"
-
-          git config --global user.email "github-actions@github.com"
-
-
-          git add leaderboard.csv
-
-
-          git commit \
-            -m "Update experiment leaderboard (${{ github.run_id }})" \
-            || echo "No leaderboard changes to commit"
-
-
-          git pull --rebase origin "${GITHUB_REF_NAME}"
-
-
-          git push
-
-
-      # ------------------------------------------------------
-      # STEP 7
-      # FINAL CONFIRMATION
-      # ------------------------------------------------------
-
-      - name: Step 7 - Confirm Level 8 completed
+      - name: Step 12 - Level 9 complete
 
         run: |
 
@@ -234,36 +277,22 @@ jobs:
 
           echo "======================================================"
 
-          echo "LEVEL 8 COMPLETED SUCCESSFULLY"
+          echo "LEVEL 9 GITHUB → KAGGLE TEST SUBMITTED"
 
           echo "======================================================"
 
           echo ""
 
-          echo "The system has now:"
+          echo "GitHub successfully prepared the experiment."
 
           echo ""
 
-          echo "1. Run an experiment"
+          echo "Kaggle was instructed to execute:"
 
-          echo "2. Assigned an EXP-XXXX ID"
-
-          echo "3. Saved the experiment"
-
-          echo "4. Saved its parameters"
-
-          echo "5. Saved its Python code"
-
-          echo "6. Updated the leaderboard"
-
-          echo "7. Examined the experiment history"
-
-          echo "8. Identified the best experiment"
-
-          echo "9. Saved best_experiment.txt"
+          echo "quanfirst-level9"
 
           echo ""
 
-          echo "This is the foundation for future AI analysis."
+          echo "Next stage: retrieve the Kaggle output."
 
           echo "======================================================"
